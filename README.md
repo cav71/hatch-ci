@@ -1,4 +1,4 @@
-# hatch-vcs
+# hatch-ci
 
 | | |
 | --- | --- |
@@ -8,7 +8,10 @@
 
 -----
 
-This provides a plugin for [Hatch](https://github.com/pypa/hatch) that uses your preferred version control system (like Git) to determine project versions.
+This provides a plugin for [Hatch](https://github.com/pypa/hatch) to leverage a CI/CD system to set up the version.
+
+HUGE NOTE THIS IS TOTALLY BASED ON https://github.com/ofek/hatch-vcs
+
 
 **Table of Contents**
 
@@ -27,7 +30,7 @@ This provides a plugin for [Hatch](https://github.com/pypa/hatch) that uses your
 
 ## Global dependency
 
-Ensure `hatch-vcs` is defined within the `build-system.requires` field in your `pyproject.toml` file.
+Ensure `hatch-ci` is defined within the `build-system.requires` field in your `pyproject.toml` file.
 
 ```toml
 [build-system]
