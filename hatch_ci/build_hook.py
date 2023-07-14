@@ -1,8 +1,10 @@
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 
+from .common import PLUGIN_NAME
+
 
 class GitHubBuildHook(BuildHookInterface):
-    PLUGIN_NAME = 'github'
+    PLUGIN_NAME = PLUGIN_NAME
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

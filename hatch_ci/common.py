@@ -1,2 +1,1 @@
-PLUGIN_NAME = 'github'
-
+PLUGIN_NAME = 'ci'

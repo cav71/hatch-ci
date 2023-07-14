@@ -3,11 +3,11 @@ from collections import ChainMap
 from hatchling.metadata.plugin.interface import MetadataHookInterface
 from hatchling.utils.context import ContextStringFormatter
 
-from hatch_vcs import vcs_utils
+from .common import PLUGIN_NAME
 
 
 class GitHubMetadataHook(MetadataHookInterface):
-    PLUGIN_NAME = 'github'
+    PLUGIN_NAME = PLUGIN_NAME
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

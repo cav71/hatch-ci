@@ -1,8 +1,10 @@
 from hatchling.version.source.plugin.interface import VersionSourceInterface
 
+from .common import PLUGIN_NAME
+
 
 class GitHubVersionSource(VersionSourceInterface):
-    PLUGIN_NAME = 'github'
+    PLUGIN_NAME = PLUGIN_NAME
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

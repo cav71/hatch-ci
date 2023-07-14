@@ -1,10 +1,10 @@
 help:
-	@echo "make install|wheel"
+	@echo "make install|build"
 
 
 install:
 	-pip uninstall hatch-github
 	pip install --edit .
 
-wheel:
+build:
 	rm -rf dist && python -m build .

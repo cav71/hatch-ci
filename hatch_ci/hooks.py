@@ -1,8 +1,8 @@
 from hatchling.plugin import hookimpl
 
-from hatch_github.build_hook import GitHubBuildHook
-from hatch_github.metadata_hook import GitHubMetadataHook
-from hatch_github.version_hoock import GitHubVersionSource
+from hatch_ci.build_hook import GitHubBuildHook
+from hatch_ci.metadata_hook import GitHubMetadataHook
+from hatch_ci.version_hook import GitHubVersionSource
 
 
 @hookimpl
