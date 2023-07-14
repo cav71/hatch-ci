@@ -62,7 +62,6 @@ def parse_args(args: str|None = None, testmode: bool = False) -> dict[str, Any]:
         "verbose",
     ]:
         delattr(options, d)
-    breakpoint()
     return options.__dict__
 
 

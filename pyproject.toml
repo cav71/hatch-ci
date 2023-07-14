@@ -36,7 +36,7 @@ dependencies = [
 ]
 
 [project.scripts]
-hatch-ci = "hatch_ci:__main__"
+hatch-ci = "hatch_ci:__main__.main"
 
 [project.urls]
 #Funding = "https://github.com/sponsors/ofek"
