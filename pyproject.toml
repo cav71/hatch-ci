@@ -9,6 +9,7 @@ description = 'Hatch plugin for ci system versioning'
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">= 3.8"
+packages = ["src/hatch_ci"]
 keywords = [
   "git",
   "hatch",
@@ -38,8 +39,6 @@ dependencies = [
 hatch-ci = "hatch_ci:__main__.main"
 
 [project.urls]
-#Funding = "https://github.com/sponsors/ofek"
-#History = "https://github.com/ofek/hatch-vcs/blob/master/HISTORY.md"
 Issues = "https://github.com/cav71/hatch-ci/issues"
 Source = "https://github.com/cav71/hatch-ci"
 
@@ -47,16 +46,13 @@ Source = "https://github.com/cav71/hatch-ci"
 ci = "hatch_ci.hooks"
 
 [tool.hatch.version]
-path = "hatch_ci/__init__.py"
-
-[tool.black]
-target-version = ["py38"]
-line-length = 120
-skip-string-normalization = true
+source = "ci"
+xxx = 123
+path = "src/hatch_ci/__init__.py"
 
 [tool.ruff]
 target-version = "py38"
-line-length = 120
+line-length = 88
 select = [
   "A",
   "B",
@@ -93,7 +89,8 @@ unfixable = [
 known-first-party = ["hatch_ci"]
 
 [tool.ruff.flake8-quotes]
-inline-quotes = "single"
+inline-quotes = "double"
+
 
 [tool.ruff.flake8-tidy-imports]
 ban-relative-imports = "all"
