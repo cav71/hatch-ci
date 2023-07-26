@@ -10,8 +10,8 @@
 
 -----
 
-This provides a plugin for [Hatch](https://github.com/pypa/hatch) to help in delivering wheel
-to [PyPi](https://pypi.org) using a CI/CD system.
+This provides a plugin to [Hatch](https://github.com/pypa/hatch) leveraging a CI/CD system (github at the moment)
+to deliver packages to [PyPi](https://pypi.org).
 
 > **NOTE**: this is heavily inspired from  [hatch-vcs](https://github.com/ofek/hatch-vcs)
 

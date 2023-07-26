@@ -30,6 +30,12 @@ class GitHubMetadataHook(MetadataHookInterface):
         return self.__config_urls
 
     def update(self, metadata):
+        import inspect
+        stack = inspect.stack()
+        the_class = stack[1][0].f_locals["self"].__class__.__name__
+        the_method = stack[1][0].f_code.co_name
+        print(f"2. {the_class}->{the_method}")
+        print(f"  {self.__class__.__name__}->update")
         formatter = ContextStringFormatter(
             ChainMap(
                 {
