@@ -1,16 +1,15 @@
 # see https://pypi.org/project/setuptools-github
 # copy of setuptools_github.scm
 from __future__ import annotations
+
+import dataclasses as dc
 import io
 import re
-import dataclasses as dc
 import subprocess
 from pathlib import Path
-
+from typing import Any, List, Union
 
 from typing_extensions import TypeAlias
-from typing import Union, List, Any
-
 
 ListOfArgs: TypeAlias = Union[str, Path, List[Union[str, Path]]]
 
@@ -58,7 +57,7 @@ class GitRepoBranches:
 class GitRepoHead:
     @dc.dataclass
     class GitRepoHeadHex:
-        hex: str
+        hex: str  # noqa: A003
 
     name: str
     target: GitRepoHeadHex
@@ -88,12 +87,12 @@ class GitRepoBase:
                 ]
             )
         arguments.extend(str(c) for c in cmds)
-        return subprocess.check_output(arguments, encoding="utf-8")
+        return subprocess.check_output(arguments, encoding="utf-8")  # noqa: S603
 
     def __truediv__(self, other):
         return (self.workdir / other).absolute()
 
-    def dumps(self, mask=False) -> str:
+    def dumps(self, mask: bool = False) -> str:  # noqa: FBT001, FBT002
         lines = f"REPO: {self.workdir}"
         lines += "\n [status]\n" + indent(self(["status"]))
         branches = self(["branch", "-avv"])
@@ -145,7 +144,11 @@ class GitRepo(GitRepoBase):
             raise GitError(f"no branch '{name}'") from exc
         return GitRepoHead(name=name, target=GitRepoHead.GitRepoHeadHex(txt))
 
-    def status(self, untracked_files: str = "all", ignored: bool = False) -> dict[str, int]:
+    def status(
+        self,
+        untracked_files: str = "all",
+        ignored: bool = False,  # noqa: FBT001, FBT002
+    ) -> dict[str, int]:
         mapper = {
             "??": 128 if untracked_files == "all" else None,
             " D": 512,
@@ -178,7 +181,8 @@ class GitRepo(GitRepoBase):
         if not name:
             name = self.head.name or ""
             return name[11:] if name.startswith("refs/heads/") else name
-        assert origin or origin is None
+        if not (origin or origin is None):
+            raise RuntimeError(f"invalid {origin=}")
         old = self.branch()
         self(["checkout", "-b", name, "--track", origin])
         return old[11:] if old.startswith("refs/heads/") else old
@@ -199,12 +203,16 @@ class GitRepo(GitRepoBase):
 
     @property
     def references(self) -> list[str]:
-        return [f"refs/tags/{line.strip()}" for line in self(["tag", "-l"]).split("\n") if line.strip()]
+        return [
+            f"refs/tags/{line.strip()}"
+            for line in self(["tag", "-l"]).split("\n")
+            if line.strip()
+        ]
 
     def clone(
         self,
         dest: str | Path,
-        force=False,
+        force: bool=False,  # noqa: FBT001, FBT002
         branch: str | None = None,
     ) -> GitRepo:
         from shutil import rmtree
