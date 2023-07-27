@@ -9,19 +9,23 @@ from typing import Any
 from . import scm
 
 
-class GithubError(Exception):
+class ToolsError(Exception):
     pass
 
 
-class MissingVariable(GithubError):
+class ValidationError(ToolsError):
     pass
 
 
-class InvalidGithubReference(GithubError):
+class InvalidVersionError(ToolsError):
     pass
 
 
-class AbortExecution(Exception):
+class MissingVariableError(ToolsError):
+    pass
+
+
+class AbortExecutionError(Exception):
     @staticmethod
     def _strip(txt):
         txt = txt or ""
@@ -112,7 +116,7 @@ def get_module_var(
             self.keys = keys
             self.result = {}
 
-        def visit_Module(self, node):
+        def visit_Module(self, node):  # noqa: N802
             # we extract the module level variables
             for subnode in ast.iter_child_nodes(node):
                 if not isinstance(subnode, ast.Assign):
@@ -120,12 +124,11 @@ def get_module_var(
                 for target in subnode.targets:
                     if target.id not in self.keys:
                         continue
-                    assert isinstance(
-                        subnode.value, (ast.Num, ast.Str, ast.Constant)
-                    ), (
-                        f"cannot extract non Constant variable "
-                        f"{target.id} ({type(subnode.value)})"
-                    )
+                    if not isinstance(subnode.value, (ast.Num, ast.Str, ast.Constant)):
+                        raise ValidationError(
+                            f"cannot extract non Constant variable "
+                            f"{target.id} ({type(subnode.value)})"
+                        )
                     if isinstance(subnode.value, ast.Str):
                         value = subnode.value.s
                     elif isinstance(subnode.value, ast.Num):
@@ -141,7 +144,7 @@ def get_module_var(
         tree = ast.parse(Path(path).read_text())
         v.visit(tree)
     if var not in v.result and abort:
-        raise MissingVariable(f"cannot find {var} in {path}", path, var)
+        raise MissingVariableError(f"cannot find {var} in {path}", path, var)
     return v.result.get(var, None)
 
 
@@ -238,7 +241,7 @@ def update_version(
 
     if not (repo or github_dump):
         if abort:
-            raise GithubError(f"cannot find a valid git repo for {path}")
+            raise scm.InvalidGitRepoError(f"cannot find a valid git repo for {path}")
         return get_module_var(path, "__version__")
 
     if not github_dump and repo:
@@ -262,9 +265,9 @@ def update_version(
         # this fixes the issue
         match1 = expr1.search(current or "")
         if not match1:
-            raise InvalidGithubReference(f"cannot parse current version '{current}'")
+            raise InvalidVersionError(f"cannot parse current version '{current}'")
         if match1.group("version") != match.group("version"):
-            raise InvalidGithubReference(
+            raise InvalidVersionError(
                 f"building package for {current} from '{gdata['ref']}' "
                 f"branch ({match.groupdict()} mismatch {match1.groupdict()})"
             )

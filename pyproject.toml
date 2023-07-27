@@ -75,7 +75,7 @@ ignore = [
   # Ignore McCabe complexity
   "C901",
   # Allow boolean positional values in function calls, like `dict.get(... True)`
-  "FBT003",
+  "FBT001", "FBT002", "FBT003",
   # Ignore checks for possible passwords
   "S105", "S106", "S107",
 ]

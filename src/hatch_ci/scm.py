@@ -47,6 +47,10 @@ class GitError(Exception):
     pass
 
 
+class InvalidGitRepoError(GitError):
+    pass
+
+
 @dc.dataclass
 class GitRepoBranches:
     local: list[str]
@@ -92,7 +96,7 @@ class GitRepoBase:
     def __truediv__(self, other):
         return (self.workdir / other).absolute()
 
-    def dumps(self, mask: bool = False) -> str:  # noqa: FBT001, FBT002
+    def dumps(self, mask: bool = False) -> str:
         lines = f"REPO: {self.workdir}"
         lines += "\n [status]\n" + indent(self(["status"]))
         branches = self(["branch", "-avv"])
@@ -147,7 +151,7 @@ class GitRepo(GitRepoBase):
     def status(
         self,
         untracked_files: str = "all",
-        ignored: bool = False,  # noqa: FBT001, FBT002
+        ignored: bool = False,
     ) -> dict[str, int]:
         # to update the mapping:
         # pygit2.Repository(self.workdir).status()
@@ -215,7 +219,7 @@ class GitRepo(GitRepoBase):
     def clone(
         self,
         dest: str | Path,
-        force: bool=False,  # noqa: FBT001, FBT002
+        force: bool = False,
         branch: str | None = None,
     ) -> GitRepo:
         from shutil import rmtree

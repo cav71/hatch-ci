@@ -1,1 +1,1 @@
-PLUGIN_NAME = 'ci'
+PLUGIN_NAME = "ci"

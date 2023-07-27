@@ -1,14 +1,17 @@
 from __future__ import annotations
+
 import argparse
 import functools
 import logging
+import sys
 from typing import Any
 
+from . import tools
 
 log = logging.getLogger(__name__)
 
 
-def parse_args(args: str|None = None, testmode: bool = False) -> dict[str, Any]:
+def parse_args(args: str | None = None, testmode: bool = False) -> dict[str, Any]:
     """parses args from the command line
 
     Args:
@@ -16,13 +19,13 @@ def parse_args(args: str|None = None, testmode: bool = False) -> dict[str, Any]:
         testmode: internal flag, if set will not SystemExit but will
                   raises tools.AbortExecution
     """
+
     class F(
         argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter
     ):
         pass
 
-    parser = argparse.ArgumentParser(
-        formatter_class=F, description=__doc__)
+    parser = argparse.ArgumentParser(formatter_class=F, description=__doc__)
 
     parser.add_argument("-n", "--dry-run", dest="dryrun", action="store_true")
     parser.add_argument("-v", "--verbose", action="store_true")
@@ -45,8 +48,8 @@ def parse_args(args: str|None = None, testmode: bool = False) -> dict[str, Any]:
         if testmode:
             raise tools.AbortExecution(message, explain, hint)
         else:
-            print()
-            print("\n".join(out), file=sys.stderr)
+            print()  # noqa: T201
+            print("\n".join(out), file=sys.stderr)  # noqa: T201
             raise SystemExit(2)
 
     options.error = functools.partial(error, parser=parser, testmode=testmode)
