@@ -82,7 +82,7 @@ jobs:
 
       - name: Build wheel package
         env:
-          PYTHONPATH: .
+          PYTHONPATH: src
           GITHUB_DUMP: ${{ toJson(github) }}
         run: |
           python -m build
