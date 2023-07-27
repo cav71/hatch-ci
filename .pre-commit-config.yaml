@@ -1,10 +1,4 @@
 repos:
-#-   repo: https://github.com/psf/black
-#    rev: 22.3.0
-#    hooks:
-#    - id: black
-#      exclude: tests
-#
 #-   repo: https://github.com/PyCQA/flake8
 #    rev: 6.0.0
 #    hooks:
@@ -21,6 +15,12 @@ repos:
 #    - id: isort
 #      name: isort (pyi)
 #      types: [pyi]
+
+-   repo: https://github.com/psf/black
+    rev: 22.3.0
+    hooks:
+    - id: black
+      exclude: tests
 
 -   repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
