@@ -85,9 +85,9 @@ jobs:
           PYTHONPATH: src
           GITHUB_DUMP: ${{ toJson(github) }}
         run: |
-          # special for hatch-ci plugin
+          # this is special for hatch-ci plugin
           python -m pip install --edit .
-          python -m build
+          python -m build -n
 
       - name: Publish packages to pypi (beta)
         shell: bash
