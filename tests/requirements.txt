@@ -1,5 +1,4 @@
 click
-flake8
 jinja2
 lxml
 mock
@@ -12,3 +11,4 @@ pytest
 typing_extensions
 pytest-cov
 pytest-html
+ruff
