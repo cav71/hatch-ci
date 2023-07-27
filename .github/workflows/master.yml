@@ -49,7 +49,7 @@ jobs:
           PYTHONPATH: src
           OUTDIR: build/qa-${{ matrix.python-version }}-${{ matrix.os}}
         run: |
-          mypy src/setuptools_github \
+          mypy src/hatch_ci \
             --no-incremental --xslt-html-report $OUTDIR/mypy
 
       - name: Runtime tests (unitest, coverage etc.)
@@ -59,7 +59,7 @@ jobs:
           OUTDIR: build/qa-${{ matrix.python-version }}-${{ matrix.os}}
         run: |
           py.test \
-              --cov=setuptools_github \
+              --cov=hatch_ci \
               --cov-report=html:$OUTDIR/coverage --cov-report=xml:$OUTDIR/coverage.xml \
               --junitxml=$OUTDIR/junit/junit.xml --html=$OUTDIR/junit/junit.html --self-contained-html \
             tests
