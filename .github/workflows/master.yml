@@ -49,7 +49,7 @@ jobs:
           PYTHONPATH: src
           OUTDIR: build/qa-${{ matrix.python-version }}-${{ matrix.os}}
         run: |
-          mypy src/hatch_ci \
+          mypy src \
             --no-incremental --xslt-html-report $OUTDIR/mypy
 
       - name: Runtime tests (unitest, coverage etc.)
