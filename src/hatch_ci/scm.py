@@ -149,10 +149,13 @@ class GitRepo(GitRepoBase):
         untracked_files: str = "all",
         ignored: bool = False,  # noqa: FBT001, FBT002
     ) -> dict[str, int]:
+        # to update the mapping:
+        # pygit2.Repository(self.workdir).status()
         mapper = {
             "??": 128 if untracked_files == "all" else None,
             " D": 512,
             " M": 256,
+            "A ": 1,
         }
         result = {}
         try:
