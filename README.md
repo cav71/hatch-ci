@@ -37,7 +37,7 @@ Ensure `hatch-ci` is defined within the `build-system.requires` field in your `p
 
 ```toml
 [build-system]
-requires = ["hatchling", "hatch-vcs"]
+requires = ["hatchling", "hatch-ci"]
 build-backend = "hatchling.build"
 ```
 
@@ -49,14 +49,14 @@ The [version source plugin](https://hatch.pypa.io/latest/plugins/version-source/
 
     ```toml
     [tool.hatch.version]
-    source = "vcs"
+    source = "ci"
     ```
 
 - ***hatch.toml***
 
     ```toml
     [version]
-    source = "vcs"
+    source = "ci"
     ```
 
 ### Version source options

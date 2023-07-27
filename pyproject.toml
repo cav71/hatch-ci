@@ -47,8 +47,7 @@ ci = "hatch_ci.hooks"
 
 [tool.hatch.version]
 source = "ci"
-xxx = 123
-path = "src/hatch_ci/__init__.py"
+version-file = "src/hatch_ci/__init__.py"
 
 [tool.ruff]
 target-version = "py38"
