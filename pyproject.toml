@@ -1,19 +1,18 @@
 [build-system]
-requires = ["hatchling>=1.1.0"]
+requires = ["hatchling>=1.1.0", "hatch-ci"]
 build-backend = "hatchling.build"
 
 [project]
 name = "hatch-ci"
 dynamic = ["version"]
-description = 'Hatch plugin for ci system versioning'
+description = "Hatch plugin for ci system versioning"
 readme = "README.md"
 license = { text = "MIT" }
-requires-python = ">= 3.8"
+requires-python = ">= 3.7"
 packages = ["src/hatch_ci"]
 keywords = [
   "git",
   "hatch",
-  "mercurial",
   "plugin",
   "scm",
   "version",
@@ -24,6 +23,7 @@ authors = [
 classifiers = [
   "Development Status :: 4 - Beta",
   "Programming Language :: Python",
+  "Programming Language :: Python :: 3.7",
   "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
