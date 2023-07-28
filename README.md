@@ -78,14 +78,15 @@ The [build hook plugin](https://hatch.pypa.io/latest/plugins/build-hook/referenc
 - ***pyproject.toml***
 
     ```toml
-    [tool.hatch.build.hooks.vcs]
+    [tool.hatch.version]
     version-file = "_version.py"
+    version-file = "src/hatch_ci/__init__.py"
     ```
 
 - ***hatch.toml***
 
     ```toml
-    [build.hooks.vcs]
+    [build.version]
     version-file = "_version.py"
     ```
 
