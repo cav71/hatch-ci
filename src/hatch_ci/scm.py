@@ -171,6 +171,8 @@ class GitRepo(GitRepoBase):
             if not line.strip():
                 continue
             tag, filename = line[:2], line[3:]
+            if tag not in mapper:
+                raise GitError(f"cannot map git status for '{tag}'")
             value = mapper[tag]
             if value:
                 result[filename] = (
