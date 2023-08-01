@@ -158,10 +158,11 @@ class GitRepo(GitRepoBase):
         mapper = {
             "??": 128 if untracked_files == "all" else None,
             " D": 512,
+            "D ": 4,
             " M": 256,
             "A ": 1,
         }
-        result = {}
+        result: dict[str, int] = {}
         try:
             txt = self(["status", "--porcelain"])
         except subprocess.CalledProcessError as exc:
@@ -172,7 +173,9 @@ class GitRepo(GitRepoBase):
             tag, filename = line[:2], line[3:]
             value = mapper[tag]
             if value:
-                result[filename] = value
+                result[filename] = (
+                    (result[filename] | value) if filename in result else value
+                )
         return result
 
     def commit(
