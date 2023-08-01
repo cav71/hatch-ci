@@ -107,7 +107,7 @@ def main(options) -> None:
         To complete the release:
             git push origin beta/{version}
 
-        To revert this release:
+        To revert this beta branch:
             git branch -D beta/{version}
         """
             ),
