@@ -36,7 +36,7 @@ dependencies = [
 ]
 
 [project.scripts]
-hatch-ci = "hatch_ci:__main__.main"
+hatch-ci = "hatch_ci:script.main"
 
 [project.urls]
 Issues = "https://github.com/cav71/hatch-ci/issues"
