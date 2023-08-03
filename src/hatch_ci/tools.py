@@ -144,6 +144,8 @@ def get_module_var(
                     else:
                         value = subnode.value.value
                     if target.id in self.result:
+                        print(f">>> {path=}")  # noqa: T201
+                        print(path.read_text())  # noqa: T201
                         raise ValidationError(
                             f"found multiple repeated variables {target.id}"
                         )
