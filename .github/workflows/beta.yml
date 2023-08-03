@@ -7,6 +7,7 @@ on:
 env:
   PACKAGE: hatch_ci
   XTARGET: '3.11'
+  XOS: 'ubuntu-latest'
 
 jobs:
   build:
@@ -71,10 +72,12 @@ jobs:
           touch build/.keepme
 
       - name: Build wheel packages
-        if: ${{ ! contains(matrix.os, 'windows') }}
+        if: ${{ matrix.os == env.XOS }}
         env:
           GITHUB_DUMP: ${{ toJson(github) }}
         run: |
+          # this is special for hatch-ci plugin
+          python -m pip install hatch-ci
           python -m build
           mv dist build
 
@@ -134,25 +137,12 @@ jobs:
           verbose: true
           override_branch: ${{ github.ref_name }}
 
-      - name: XDEBUG
-        shell: bash
-        run: |
-          pwd
-          git status
-
-      - name: Build wheel packages
-        env:
-          GITHUB_DUMP: ${{ toJson(github) }}
-        run: |
-          # this is special for hatch-ci plugin
-          python -m pip install --edit .
-          python -m build -n
-
       - name: Publish packages to pypi (beta)
         shell: bash
         env:
           TWINE_USERNAME: ${{ secrets.TWINE_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD }}
         run: |
-          twine upload --skip-existing --non-interactive --repository pypi dist/*
+          echo twine upload --skip-existing --non-interactive --repository pypi dist/*
+          ls -l dist
   
