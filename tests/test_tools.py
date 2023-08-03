@@ -178,8 +178,20 @@ __hash__ = "4.5.6"
 """
     )
 
+    version, txt = tools.set_module_var(path, "__version__", "")
+    assert version is None
+    assert (
+        txt.rstrip()
+        == """
+# a fist comment line
+__hash__ = "4.5.6"
+# end of test
+__version__ = ""
+""".rstrip()
+    )
+
     version, txt = tools.set_module_var(path, "__version__", "1.2.3")
-    assert not version
+    assert version == ""
     assert (
         txt.rstrip()
         == """
