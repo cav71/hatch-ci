@@ -140,6 +140,4 @@ jobs:
           TWINE_USERNAME: ${{ secrets.TWINE_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD }}
         run: |
-          echo twine upload --skip-existing --non-interactive --repository pypi dist/*
-          ls -l dist
-  
+          twine upload --skip-existing --non-interactive --repository pypi dist/*
