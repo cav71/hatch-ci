@@ -1,3 +1,5 @@
+# see https://pypi.org/project/setuptools-github
+# copy of setuptools_github.tools
 from __future__ import annotations
 
 import ast
@@ -87,8 +89,14 @@ def indent(txt: str, pre: str = " " * 2) -> str:
     return result if result.strip() else result.strip()
 
 
-def list_of_paths(paths: str | Path | list[str | Path]) -> list[Path]:
+def list_of_paths(paths: str | Path | list[str | Path] | None) -> list[Path]:
+    if not paths:
+        return []
     return [Path(s) for s in ([paths] if isinstance(paths, (str, Path)) else paths)]
+
+
+def lstrip(txt: str, left: str) -> str:
+    return txt[len(left) :] if txt.startswith(left) else txt
 
 
 def get_module_var(
@@ -135,6 +143,10 @@ def get_module_var(
                         value = subnode.value.n
                     else:
                         value = subnode.value.value
+                    if target.id in self.result:
+                        raise ValidationError(
+                            f"found multiple repeated variables {target.id}"
+                        )
                     self.result[target.id] = value
             return self.generic_visit(node)
 
@@ -162,6 +174,10 @@ def set_module_var(
     Returns:
         (str, str) the (<previous-var-value|None>, <the new text>)
     """
+
+    # validate the var
+    get_module_var(path, var, abort=False)
+
     # module level var
     expr = re.compile(f"^{var}\\s*=\\s*['\\\"](?P<value>[^\\\"']*)['\\\"]")
     fixed = None
@@ -173,8 +189,8 @@ def set_module_var(
         src.touch()
 
     input_lines = src.read_text().split("\n")
-    for line in reversed(input_lines):
-        if fixed:
+    for line in input_lines:
+        if fixed is not None:
             lines.append(line)
             continue
         match = expr.search(line)
@@ -184,8 +200,8 @@ def set_module_var(
                 x, y = match.span(1)
                 line = line[:x] + value + line[y:]
         lines.append(line)
-    txt = "\n".join(reversed(lines))
-    if not fixed and create:
+    txt = "\n".join(lines)
+    if (fixed is None) and create:
         if txt and txt[-1] != "\n":
             txt += "\n"
         txt += f'{var} = "{value}"'
@@ -223,6 +239,77 @@ def bump_version(version: str, mode: str) -> str:
     return ".".join(str(v) for v in newver)
 
 
+def get_data(
+    initfile: str | Path, github_dump: str | None = None, abort: bool = True
+) -> dict[str, str | None]:
+    """extracts version information from github_dump and updates initfile in-place
+
+    Args:
+        initfile (str, Path): path to the __init__.py file with a __version__ variable
+        github_dump (str): the os.getenv("GITHUB_DUMP") value
+
+    Returns:
+        dict[str,str|None]: a dict with the current config
+    """
+    result = {
+        "version": get_module_var(initfile, "__version__"),
+        "current": get_module_var(initfile, "__version__"),
+        "branch": None,
+        "hash": None,
+        "build": None,
+        "runid": None,
+        "workflow": None,
+    }
+
+    path = Path(initfile)
+    repo = scm.lookup(path)
+
+    if not (repo or github_dump):
+        if abort:
+            raise scm.InvalidGitRepoError(f"cannot find a valid git repo for {path}")
+        return result
+
+    if not github_dump and repo:
+        gdata = {
+            "ref": repo.head.name,
+            "sha": repo.head.target.hex[:7],
+            "run_number": 0,
+            "run_id": 0,
+        }
+        dirty = repo.dirty()
+    else:
+        gdata = json.loads(github_dump) if isinstance(github_dump, str) else github_dump
+        dirty = False
+
+    expr = re.compile(r"/(?P<what>beta|release)/(?P<version>\d+([.]\d+)*)$")
+    expr1 = re.compile(r"(?P<version>\d+([.]\d+)*)(?P<num>b\d+)?$")
+
+    result["branch"] = lstrip(gdata["ref"], "refs/heads/")
+    result["hash"] = gdata["sha"] + ("*" if dirty else "")
+    result["build"] = gdata["run_number"]
+    result["runid"] = gdata["run_id"]
+    result["workflow"] = result["branch"]
+
+    current = result["current"]
+    if match := expr.search(gdata["ref"]):
+        # setuptools double calls the update_version,
+        # this fixes the issue
+        match1 = expr1.search(current or "")
+        if not match1:
+            raise InvalidVersionError(f"cannot parse current version '{current}'")
+        if match1.group("version") != match.group("version"):
+            raise InvalidVersionError(
+                f"building package for {current} from '{gdata['ref']}' "
+                f"branch ({match.groupdict()} mismatch {match1.groupdict()})"
+            )
+        if match.group("what") == "beta":
+            result["version"] = f"{match1.group('version')}b{gdata['run_number']}"
+            result["workflow"] = "beta"
+        else:
+            result["workflow"] = "tags"
+    return result
+
+
 def update_version(
     initfile: str | Path, github_dump: str | None = None, abort: bool = True
 ) -> str | None:
@@ -236,46 +323,61 @@ def update_version(
         str: the new version for the package
     """
 
-    path = Path(initfile)
-    repo = scm.lookup(path)
+    data = get_data(initfile, github_dump, abort)
+    set_module_var(initfile, "__version__", data["version"])
+    set_module_var(initfile, "__hash__", data["hash"])
+    return data["version"]
 
-    if not (repo or github_dump):
-        if abort:
-            raise scm.InvalidGitRepoError(f"cannot find a valid git repo for {path}")
-        return get_module_var(path, "__version__")
 
-    if not github_dump and repo:
-        gdata = {
-            "ref": repo.head.name,
-            "sha": repo.head.target.hex[:7],
-            "run_number": 0,
+def process(
+    initfile: str | Path,
+    github_dump: str | None = None,
+    paths: str | Path | list[str | Path] | None = None,
+    fixers: dict[str, str] | None = None,
+    abort: bool = True,
+) -> dict[str, str | None]:
+    """get version from github_dump and updates initfile/paths
+
+    Args:
+        paths (str, Path): path(s) to files jinja2 processeable
+        initfile (str, Path): path to the __init__.py file with a __version__ variable
+        github_dump (str): the os.getenv("GITHUB_DUMP") value
+
+    Returns:
+        str: the new version for the package
+
+    Example:
+        {'branch': 'beta/0.3.1',
+         'build': 0,
+         'current': '0.3.1',
+         'hash': 'c9e484a*',
+         'version': '0.3.1b0',
+         'runid': 0
         }
-        dirty = bool(repo.status())
-    else:
-        gdata = json.loads(github_dump) if isinstance(github_dump, str) else github_dump
-        dirty = False
+    """
+    from argparse import Namespace
+    from functools import partial
+    from urllib.parse import quote
 
-    version = current = get_module_var(path, "__version__")
+    from jinja2 import Environment
 
-    expr = re.compile(r"/(?P<what>beta|release)/(?P<version>\d+([.]\d+)*)$")
-    expr1 = re.compile(r"(?P<version>\d+([.]\d+)*)(?P<num>b\d+)?$")
+    class Context(Namespace):
+        def items(self):
+            for name, value in self.__dict__.items():
+                if name.startswith("_"):
+                    continue
+                yield (name, value)
 
-    if match := expr.search(gdata["ref"]):
-        # setuptools double calls the update_version,
-        # this fixes the issue
-        match1 = expr1.search(current or "")
-        if not match1:
-            raise InvalidVersionError(f"cannot parse current version '{current}'")
-        if match1.group("version") != match.group("version"):
-            raise InvalidVersionError(
-                f"building package for {current} from '{gdata['ref']}' "
-                f"branch ({match.groupdict()} mismatch {match1.groupdict()})"
-            )
-        if match.group("what") == "beta":
-            version = f"{match1.group('version')}b{gdata['run_number']}"
+    data = get_data(initfile, github_dump, abort)
+    set_module_var(initfile, "__version__", data["version"])
+    set_module_var(initfile, "__hash__", data["hash"])
 
-    short = gdata["sha"] + ("*" if dirty else "")
-
-    set_module_var(path, "__version__", version)
-    set_module_var(path, "__hash__", short)
-    return version
+    env = Environment(autoescape=True)
+    env.filters["urlquote"] = partial(quote, safe="")
+    for path in list_of_paths(paths):
+        txt = path.read_text()
+        for old, new in (fixers or {}).items():
+            txt = txt.replace(old, new, 1)
+        tmpl = env.from_string(txt)
+        path.write_text(tmpl.render(ctx=Context(**data)))
+    return data
