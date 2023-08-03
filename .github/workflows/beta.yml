@@ -133,6 +133,12 @@ jobs:
           verbose: true
           override_branch: ${{ github.ref_name }}
 
+      - name: XDEBUG
+        shell: bash
+        run: |
+          pwd
+          git status
+
       - name: Build wheel packages
         env:
           GITHUB_DUMP: ${{ toJson(github) }}
