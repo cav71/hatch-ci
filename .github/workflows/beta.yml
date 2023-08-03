@@ -7,7 +7,6 @@ on:
 env:
   PACKAGE: hatch_ci
   XTARGET: '3.11'
-  XOS: 'ubuntu-latest'
 
 jobs:
   build:
@@ -72,7 +71,7 @@ jobs:
           touch build/.keepme
 
       - name: Build wheel packages
-        if: ${{ matrix.os == env.XOS }}
+        if: ${{ matrix.os == 'ubuntu-latest' }}
         env:
           GITHUB_DUMP: ${{ toJson(github) }}
         run: |
@@ -93,7 +92,7 @@ jobs:
   publish:
     strategy:
       matrix:
-        os: ['${{ env.XOS }}']
+        os: [ubuntu-latest]
         python-version: ["3.8", "3.9", "3.10", "3.11",]
     runs-on: ${{ matrix.os }}
     needs: build
@@ -127,7 +126,7 @@ jobs:
 
       - name: "Upload coverage to Codecov"
         uses: codecov/codecov-action@v3
-        if: ${{ matrix.python-version == env.XTARGET }}
+        if: ${{ matrix.python-version == env.XTARGET && matrix.os == 'ubuntu-latest' }}
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
