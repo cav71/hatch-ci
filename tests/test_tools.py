@@ -8,16 +8,19 @@ GITHUB = {
         "ref": "refs/heads/beta/0.0.4",
         "sha": "2169f90c22e",
         "run_number": "8",
+        "run_id": 123,
     },
     "release": {
         "ref": "refs/tags/release/0.0.3",
         "sha": "5547365c82",
         "run_number": "3",
+        "run_id": 456,
     },
     "master": {
         "ref": "refs/heads/master",
         "sha": "2169f90c",
         "run_number": "20",
+        "run_id": 789,
     },
 }
 
@@ -129,6 +132,10 @@ def test_list_of_paths():
     ]
 
 
+def test_lstrip():
+    assert tools.lstrip("/a/b/c/d/e", "/a/b") == "/c/d/e"
+
+
 def test_get_module_var(tmp_path):
     "pulls variables from a file"
     path = tmp_path / "in0.txt"
@@ -145,6 +152,18 @@ C = "hello"
     assert "hello" == tools.get_module_var(path, "C")
     pytest.raises(tools.ValidationError, tools.get_module_var, path, "B")
     pytest.raises(tools.MissingVariableError, tools.get_module_var, path, "X1")
+
+    path.write_text(
+        """
+# a test file
+A = 12
+B = 3+5
+C = "hello"
+C = "hello2"
+# end of test
+"""
+    )
+    pytest.raises(tools.ValidationError, tools.get_module_var, path, "C")
 
 
 def test_set_module_var(tmp_path):
@@ -192,6 +211,18 @@ __version__ = "6.7.8"
 __hash__ = "9.10.11"
 # end of test
 __version__ = "6.7.8"
+""".rstrip()
+    )
+
+    version, txt = tools.set_module_var(path, "__version__", "9.10.11")
+    assert version == "6.7.8"
+    assert (
+        txt.rstrip()
+        == """
+# a fist comment line
+__hash__ = "9.10.11"
+# end of test
+__version__ = "9.10.11"
 """.rstrip()
     )
 
@@ -308,3 +339,50 @@ def test_update_version_release(git_project_factory):
     assert tools.get_module_var(repo.initfile) == "0.0.3"
     assert tools.get_module_var(repo.initfile, "__hash__") == "5547365c82"
     repo.revert(repo.initfile)
+
+
+def test_process(git_project_factory):
+    def write_tfile(tfile):
+        tfile.write_text("""
+{% for k, v in ctx.items() | sort -%}
+Key[{{k}}] = {{v}}
+{% endfor %}
+""")
+        return tfile
+
+    repo = git_project_factory().create("1.2.3")
+
+    # tfile won't appear in the repo.status() because is untracked
+    tfile = write_tfile(repo.workdir / "test.txt")
+
+    data = tools.process(repo.initfile, None, tfile)
+
+    assert data["hash"][-1] != "*"
+
+    assert tfile.read_text() == f"""
+Key[branch] = master
+Key[build] = 0
+Key[current] = 1.2.3
+Key[hash] = {data['hash']}
+Key[runid] = 0
+Key[version] = 1.2.3
+Key[workflow] = master
+"""
+
+    # clean and switch to new branch
+    repo.revert(repo.initfile)
+    write_tfile(tfile)
+    repo.branch("beta/1.2.3", "master")
+
+    data = tools.process(repo.initfile, None, tfile)
+    assert data["hash"][-1] != "*"
+
+    assert tfile.read_text() == f"""
+Key[branch] = beta/1.2.3
+Key[build] = 0
+Key[current] = 1.2.3
+Key[hash] = {data['hash']}
+Key[runid] = 0
+Key[version] = 1.2.3b0
+Key[workflow] = beta
+"""
