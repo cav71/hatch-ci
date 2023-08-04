@@ -1,3 +1,5 @@
+from typing import Any
+
 from hatchling.version.source.plugin.interface import VersionSourceInterface
 
 from .common import PLUGIN_NAME
@@ -7,62 +9,39 @@ class ValidationError(Exception):
     pass
 
 
+class _NO:
+    pass
+
+
+def extract(
+    config: dict[str, str], var: str, typ: Any = _NO, optional: Any = _NO
+) -> Any:
+    value = config.get(var, optional)
+    if value is _NO:
+        raise ValidationError(f"cannot find variable '{var}' for plugin 'ci'")
+    try:
+        new_value = typ(value) if typ is not _NO else value
+    except Exception as exc:
+        raise ValidationError(f"cannot convert to {typ=} the {value=}") from exc
+    return new_value
+
+
+def get_fixers(txt: str) -> dict[str, str]:
+    if not isinstance(txt, list):
+        raise ValidationError("fixers must be list of dicts")
+    if not all(isinstance(t, dict) for t in txt):
+        raise ValidationError("fixers elements must be dicts")
+    result = {}
+    for item in txt:
+        if len(item) != 1:
+            raise ValidationError(f"cannot have an item with length != 1: {item}")
+        key = next(iter(item))
+        result[key] = item[key]
+    return result
+
+
 class CIVersionSource(VersionSourceInterface):
     PLUGIN_NAME = PLUGIN_NAME
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    #
-    #    @property
-    #    def config_tag_pattern(self):
-    #        if self.__config_tag_pattern is None:
-    #            tag_pattern = self.config.get('tag-pattern', '')
-    #            if not isinstance(tag_pattern, str):
-    #                raise TypeError('option `tag-pattern` must be a string')
-    #
-    #            self.__config_tag_pattern = tag_pattern
-    #
-    #        return self.__config_tag_pattern
-    #
-    #    @property
-    #    def config_fallback_version(self):
-    #        if self.__config_fallback_version is None:
-    #            fallback_version = self.config.get('fallback-version', '')
-    #            if not isinstance(fallback_version, str):
-    #                raise TypeError('option `fallback-version` must be a string')
-    #
-    #            self.__config_fallback_version = fallback_version
-    #
-    #        return self.__config_fallback_version
-    #
-    #    @property
-    #    def config_raw_options(self):
-    #        if self.__config_raw_options is None:
-    #            raw_options = self.config.get('raw-options', {})
-    #            if not isinstance(raw_options, dict):
-    #                raise TypeError('option `raw-options` must be a table')
-    #
-    #            self.__config_raw_options = raw_options
-    #
-    #        return self.__config_raw_options
-    #
-    #    def construct_setuptools_scm_config(self):
-    #        from copy import deepcopy
-    #
-    #        config = deepcopy(self.config_raw_options)
-    #        config.setdefault('root', self.root)
-    #
-    #        config.setdefault('tag_regex', self.config_tag_pattern)
-    #
-    #        # Only set for non-empty strings
-    #        if self.config_fallback_version:
-    #            config['fallback_version'] = self.config_fallback_version
-    #
-    #        # Writing only occurs when the build hook is enabled
-    #        config.pop('write_to', None)
-    #        config.pop('write_to_template', None)
-    #        return config
 
     def get_version_data(self):
         from os import getenv
@@ -70,10 +49,14 @@ class CIVersionSource(VersionSourceInterface):
 
         from hatch_ci import tools
 
-        initfile = Path(self.root) / self.config["version-file"]
-        if not initfile.exists():
+        paths = extract(self.config, "paths", typ=tools.list_of_paths)
+        fixers = extract(self.config, "fixers", typ=get_fixers)
+        version_file = Path(self.root) / extract(self.config, "version-file")
+        if not version_file.exists():
             raise ValidationError(
                 f"no 'version-file' key for plugin {self.PLUGIN_NAME}"
             )
-        version = tools.update_version(initfile, getenv("GITHUB_DUMP"), abort=False)
-        return {"version": version}
+        gdata = tools.process(
+            version_file, getenv("GITHUB_DUMP"), paths=paths, fixers=fixers
+        )
+        return {"version": gdata["version"]}
