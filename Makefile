@@ -16,6 +16,6 @@ build: install
     }\
     ' python -m build -n
 
-.PHONY: tests
-tests:
+.PHONY: test
+test:
 	PYTHONPATH=src py.test -vvs tests
