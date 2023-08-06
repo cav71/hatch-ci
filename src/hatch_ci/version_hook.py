@@ -16,9 +16,9 @@ class _NO:
 
 
 def extract(
-    config: dict[str, str], var: str, typ: Any = _NO, optional: Any = _NO
+    config: dict[str, str], var: str, typ: Any = _NO, fallback: Any = _NO
 ) -> Any:
-    value = config.get(var, optional)
+    value = config.get(var, fallback)
     if value is _NO:
         raise ValidationError(f"cannot find variable '{var}' for plugin 'ci'")
     try:
@@ -47,8 +47,8 @@ class CIVersionSource(VersionSourceInterface):
 
         from hatch_ci import tools
 
-        paths = extract(self.config, "paths", typ=tools.list_of_paths)
-        fixers = extract(self.config, "fixers", typ=get_fixers)
+        paths = extract(self.config, "paths", typ=tools.list_of_paths, fallback=[])
+        fixers = extract(self.config, "fixers", typ=get_fixers, fallback={})
         version_file = Path(self.root) / extract(self.config, "version-file")
 
         if not version_file.exists():
