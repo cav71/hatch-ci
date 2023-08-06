@@ -29,15 +29,11 @@ def extract(
 def get_fixers(txt: str) -> dict[str, str]:
     if not isinstance(txt, list):
         raise ValidationError("fixers must be list of dicts")
-    if not all(isinstance(t, dict) for t in txt):
-        raise ValidationError("fixers elements must be dicts")
-    result = {}
-    for item in txt:
-        if len(item) != 1:
-            raise ValidationError(f"cannot have an item with length != 1: {item}")
-        key = next(iter(item))
-        result[key] = item[key]
-    return result
+    if not all(isinstance(t, list) for t in txt):
+        raise ValidationError("fixers elements must be lists")
+    if not all(len(t) == 2 for t in txt):
+        raise ValidationError("all fixers list elements must be of length 2")
+    return dict(txt)
 
 
 class CIVersionSource(VersionSourceInterface):
@@ -52,6 +48,7 @@ class CIVersionSource(VersionSourceInterface):
         paths = extract(self.config, "paths", typ=tools.list_of_paths)
         fixers = extract(self.config, "fixers", typ=get_fixers)
         version_file = Path(self.root) / extract(self.config, "version-file")
+
         if not version_file.exists():
             raise ValidationError(
                 f"no 'version-file' key for plugin {self.PLUGIN_NAME}"
