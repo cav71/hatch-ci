@@ -99,6 +99,16 @@ def lstrip(txt: str, left: str) -> str:
     return txt[len(left) :] if txt.startswith(left) else txt
 
 
+def apply_fixers(txt: str, fixers: dict[str, str] | None = None) -> str:
+    result = txt
+    for src, dst in (fixers or {}).items():
+        if src.startswith("re:"):
+            result = re.sub(src[3:], dst, result)
+        else:
+            result = result.replace(src, dst)
+    return result
+
+
 def get_module_var(
     path: Path | str, var: str = "__version__", abort=True
 ) -> str | None:
@@ -168,7 +178,7 @@ def set_module_var(
     Args:
         path (str,Path): python module file to parse
         var (str): module level variable name to extract
-        value (None or Any): if not None replace var in initfile
+        value (None or Any): if not None replace var in version_file
         create (bool): create path if not present
 
     Returns:
@@ -240,20 +250,20 @@ def bump_version(version: str, mode: str) -> str:
 
 
 def get_data(
-    initfile: str | Path, github_dump: str | None = None, abort: bool = True
+    version_file: str | Path, github_dump: str | None = None, abort: bool = True
 ) -> dict[str, str | None]:
-    """extracts version information from github_dump and updates initfile in-place
+    """extracts version information from github_dump and updates version_file in-place
 
     Args:
-        initfile (str, Path): path to the __init__.py file with a __version__ variable
+        version_file (str, Path): path to a file  with a __version__ variable
         github_dump (str): the os.getenv("GITHUB_DUMP") value
 
     Returns:
         dict[str,str|None]: a dict with the current config
     """
     result = {
-        "version": get_module_var(initfile, "__version__"),
-        "current": get_module_var(initfile, "__version__"),
+        "version": get_module_var(version_file, "__version__"),
+        "current": get_module_var(version_file, "__version__"),
         "branch": None,
         "hash": None,
         "build": None,
@@ -261,7 +271,7 @@ def get_data(
         "workflow": None,
     }
 
-    path = Path(initfile)
+    path = Path(version_file)
     repo = scm.lookup(path)
 
     if not (repo or github_dump):
@@ -311,36 +321,36 @@ def get_data(
 
 
 def update_version(
-    initfile: str | Path, github_dump: str | None = None, abort: bool = True
+    version_file: str | Path, github_dump: str | None = None, abort: bool = True
 ) -> str | None:
-    """extracts version information from github_dump and updates initfile in-place
+    """extracts version information from github_dump and updates version_file in-place
 
     Args:
-        initfile (str, Path): path to the __init__.py file with a __version__ variable
+        version_file (str, Path): path to a file with a __version__ variable
         github_dump (str): the os.getenv("GITHUB_DUMP") value
 
     Returns:
         str: the new version for the package
     """
 
-    data = get_data(initfile, github_dump, abort)
-    set_module_var(initfile, "__version__", data["version"])
-    set_module_var(initfile, "__hash__", data["hash"])
+    data = get_data(version_file, github_dump, abort)
+    set_module_var(version_file, "__version__", data["version"])
+    set_module_var(version_file, "__hash__", data["hash"])
     return data["version"]
 
 
 def process(
-    initfile: str | Path,
+    version_file: str | Path,
     github_dump: str | None = None,
     paths: str | Path | list[str | Path] | None = None,
     fixers: dict[str, str] | None = None,
     abort: bool = True,
 ) -> dict[str, str | None]:
-    """get version from github_dump and updates initfile/paths
+    """get version from github_dump and updates version_file/paths
 
     Args:
         paths (str, Path): path(s) to files jinja2 processeable
-        initfile (str, Path): path to the __init__.py file with a __version__ variable
+        version_file (str, Path): path to a file with __version__ variable
         github_dump (str): the os.getenv("GITHUB_DUMP") value
 
     Returns:
@@ -368,16 +378,14 @@ def process(
                     continue
                 yield (name, value)
 
-    data = get_data(initfile, github_dump, abort)
-    set_module_var(initfile, "__version__", data["version"])
-    set_module_var(initfile, "__hash__", data["hash"])
+    data = get_data(version_file, github_dump, abort)
+    set_module_var(version_file, "__version__", data["version"])
+    set_module_var(version_file, "__hash__", data["hash"])
 
     env = Environment(autoescape=True)
     env.filters["urlquote"] = partial(quote, safe="")
     for path in list_of_paths(paths):
-        txt = path.read_text()
-        for old, new in (fixers or {}).items():
-            txt = txt.replace(old, new, 1)
+        txt = apply_fixers(path.read_text(), fixers)
         tmpl = env.from_string(txt)
         path.write_text(tmpl.render(ctx=Context(**data)))
     return data
