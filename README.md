@@ -46,33 +46,33 @@ The [version source plugin](https://hatch.pypa.io/latest/plugins/version-source/
     source = "ci"
     ```
 
-- ***hatch.toml***
-
-    ```toml
-    [version]
-    source = "ci"
-    ```
-
 ### Version source options
 
 - ***pyproject.toml***
 
     ```toml
     [tool.hatch.version]
+    source = "ci"
+
+    # this will be updated with __version__ and __hash__ info
     version-file = "src/hatch_ci/__init__.py"
+
+    # the files here will be jinja2 processed dynamicaly at build time
+    paths = [ "README.md" ]
+    
+    # the paths will have the strings 'a' & 'b' replaced before
+    # jinja2 processing
+    fixers = [
+        { 'a': '{ctx.workflows}' },
+        { 'd': '{ctx.branch}' }
+    ]
     ```
-
-- ***hatch.toml***
-
-    ```toml
-    [build.version]
-    version-file = "src/hatch_ci/__init__.py"
-    ```
-
 
 | Option | Type | Default | Description                                          |
 | --- | --- |---------|------------------------------------------------------|
 | `version-file` | `str` | None    | A file where to write __version__/__hash__ variables |
+| `paths` | `list[str]|str` | None | A list of paths to process |
+| `fixers` | `list[dict[str,str]]` | None | A list of dict, each key is a string to replace with the value |
 
 
 ## License
