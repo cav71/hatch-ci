@@ -29,6 +29,8 @@ def extract(
 
 
 def get_fixers(txt: str) -> dict[str, str]:
+    if not txt:
+        return {}
     if not isinstance(txt, list):
         raise ValidationError("fixers must be list of dicts")
     if not all(isinstance(t, list) for t in txt):
