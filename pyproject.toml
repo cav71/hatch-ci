@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling>=1.1.0", "typing-extensions", "hatch-ci"]
+requires = ["hatchling>=1.1.0", "typing-extensions", "hatch-ci", "jinja2"]
 build-backend = "hatchling.build"
 
 [project]
@@ -33,6 +33,7 @@ classifiers = [
 dependencies = [
   "hatchling>=1.1.0",
   "typing-extensions",
+  "jinja2",
 ]
 
 [project.scripts]
