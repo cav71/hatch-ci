@@ -49,6 +49,17 @@ ci = "hatch_ci.hooks"
 [tool.hatch.version]
 source = "ci"
 version-file = "src/hatch_ci/__init__.py"
+paths = [ "README.md" ]
+fixers = [
+    [ 're:(https://github.com/.+/actions/workflows/)(master)(.yml/badge.svg)',
+        '\\1{{ ctx.workflow }}\\3' ],
+    [ 're:(https://github.com/.+/actions)/(workflows/)(master.yml)(?!/)',
+        '\\1/runs/{{ ctx.runid }}' ],
+    [ 're:(https://codecov.io/gh/.+/tree)/master(/graph/badge.svg[?]token=.+)',
+        '\\1/{{ ctx.branch|urlquote }}\\2' ],
+    [ 're:(https://codecov.io/gh/.+/tree)/master(?!/)',
+        '\\1/{{ ctx.branch|urlquote }}' ]
+]
 
 [tool.ruff]
 target-version = "py38"
