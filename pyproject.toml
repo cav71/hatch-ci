@@ -58,9 +58,9 @@ fixers = [
         '\1/runs/{{ ctx.runid }}' ],
     
     # for the codecov part
-    [ 're:(https://codecov.io/gh/.+/tree)/master(/graph/badge.svg[?]token=.+)',
+    [ 're:(https://codecov.io/gh/.+/branch)/master(/graph/badge.svg[?]token=.+)',
         '\1/{{ ctx.branch|urlquote }}\2' ],
-    [ 're:(https://codecov.io/gh/.+/tree)/master(?!/)',
+    [ 're:(https://codecov.io/gh/.+/branch)/master(?!/)',
         '\1/{{ ctx.branch|urlquote }}' ]
 ]
 
