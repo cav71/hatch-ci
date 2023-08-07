@@ -59,5 +59,5 @@ class CIVersionSource(VersionSourceInterface):
             )
         gdata = tools.process(
             version_file, getenv("GITHUB_DUMP"), paths=paths, fixers=fixers
-        )[0]
+        )
         return {"version": gdata["version"]}
