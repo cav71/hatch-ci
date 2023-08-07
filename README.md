@@ -5,7 +5,7 @@
 [![License - MIT](https://img.shields.io/badge/license-MIT-9400d3.svg)](https://spdx.org/licenses/)
 
 [![Build](https://github.com/cav71/hatch-ci/actions/workflows/master.yml/badge.svg)](https://github.com/cav71/hatch-ci/actions/workflows/master.yml)
-[![Coverage](https://codecov.io/gh/cav71/hatch-ci/branch/master/graph/badge.svg)](https://app.codecov.io/gh/cav71/hatch-ci/tree/master)
+[![Codecov](https://codecov.io/gh/cav71/hatch-ci/tree/master/graph/badge.svg?token=SIUMZ7MT5T)](https://codecov.codecov.io/gh/cav71/hatch-ci/tree/master)
 
 [![Black](https://img.shields.io/badge/code%20style-black-000000.svg)](Black)
 [![Mypy](https://img.shields.io/badge/types-Mypy-blue.svg)](https://mypy-lang.org/)
