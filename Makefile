@@ -5,7 +5,7 @@ install:
 	-pip uninstall hatch-ci
 	pip install --edit .
 
-build: install
+build: 
 	rm -rf dist
 	GITHUB_DUMP='\
     {\
@@ -14,7 +14,7 @@ build: install
        "run_number": 14, \
        "run_id": 5753082134 \
     }\
-    ' python -m build -n
+    ' python -m build
 
 .PHONY: test
 test:
