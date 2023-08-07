@@ -99,6 +99,18 @@ def lstrip(txt: str, left: str) -> str:
     return txt[len(left) :] if txt.startswith(left) else txt
 
 
+def loadmod(path: Path) -> Any:
+    from importlib.util import module_from_spec, spec_from_file_location
+
+    module = None
+    spec = spec_from_file_location(Path(path).name, Path(path))
+    if spec:
+        module = module_from_spec(spec)
+    if module and spec and spec.loader:
+        spec.loader.exec_module(module)
+    return module
+
+
 def apply_fixers(txt: str, fixers: dict[str, str] | None = None) -> str:
     result = txt
     for src, dst in (fixers or {}).items():
@@ -250,13 +262,17 @@ def bump_version(version: str, mode: str) -> str:
 
 
 def get_data(
-    version_file: str | Path, github_dump: str | None = None, abort: bool = True
-) -> dict[str, str | None]:
+    version_file: str | Path,
+    github_dump: str | None = None,
+    record_path: Path | None = None,
+    abort: bool = True,
+) -> tuple[dict[str, str | None], dict[str, Any]]:
     """extracts version information from github_dump and updates version_file in-place
 
     Args:
         version_file (str, Path): path to a file  with a __version__ variable
         github_dump (str): the os.getenv("GITHUB_DUMP") value
+        record: pull data from a _build.py file
 
     Returns:
         dict[str,str|None]: a dict with the current config
@@ -273,13 +289,23 @@ def get_data(
 
     path = Path(version_file)
     repo = scm.lookup(path)
+    record = record_path.exists() if record_path else None
 
-    if not (repo or github_dump):
+    if not (repo or github_dump or record):
         if abort:
-            raise scm.InvalidGitRepoError(f"cannot find a valid git repo for {path}")
-        return result
+            raise scm.InvalidGitRepoError(
+                f"cannot figure out settings (no repo in {path}, "
+                f"a GITHUB_DUMP or a _build.py file)"
+            )
+        return result, {}
 
-    if not github_dump and repo:
+    dirty = False
+    if github_dump:
+        gdata = json.loads(github_dump) if isinstance(github_dump, str) else github_dump
+    elif record_path and record_path.exists():
+        mod = loadmod(record_path)
+        gdata = {k: getattr(mod, k) for k in dir(mod) if not k.startswith("_")}
+    elif repo:
         gdata = {
             "ref": repo.head.name,
             "sha": repo.head.target.hex[:7],
@@ -288,8 +314,7 @@ def get_data(
         }
         dirty = repo.dirty()
     else:
-        gdata = json.loads(github_dump) if isinstance(github_dump, str) else github_dump
-        dirty = False
+        raise RuntimeError("un-reacheable code")
 
     expr = re.compile(r"/(?P<what>beta|release)/(?P<version>\d+([.]\d+)*)$")
     expr1 = re.compile(r"(?P<version>\d+([.]\d+)*)(?P<num>b\d+)?$")
@@ -317,7 +342,7 @@ def get_data(
             result["workflow"] = "beta"
         else:
             result["workflow"] = "tags"
-    return result
+    return result, gdata
 
 
 def update_version(
@@ -333,7 +358,7 @@ def update_version(
         str: the new version for the package
     """
 
-    data = get_data(version_file, github_dump, abort)
+    data = get_data(version_file, github_dump, abort=abort)[0]
     set_module_var(version_file, "__version__", data["version"])
     set_module_var(version_file, "__hash__", data["hash"])
     return data["version"]
@@ -344,14 +369,17 @@ def process(
     github_dump: str | None = None,
     paths: str | Path | list[str | Path] | None = None,
     fixers: dict[str, str] | None = None,
+    record: str | Path = "_build.py",
     abort: bool = True,
 ) -> dict[str, str | None]:
     """get version from github_dump and updates version_file/paths
 
     Args:
-        paths (str, Path): path(s) to files jinja2 processeable
         version_file (str, Path): path to a file with __version__ variable
         github_dump (str): the os.getenv("GITHUB_DUMP") value
+        paths (str, Path): path(s) to files jinja2 processeable
+        fixers (dict[str,str]): fixer dictionary
+        record: set to True will generate a _build.py sibling of version_file
 
     Returns:
         str: the new version for the package
@@ -378,7 +406,8 @@ def process(
                     continue
                 yield (name, value)
 
-    data = get_data(version_file, github_dump, abort)
+    record_path = (Path(version_file).parent / record).absolute() if record else None
+    data, gdata = get_data(version_file, github_dump, record_path, abort)
     set_module_var(version_file, "__version__", data["version"])
     set_module_var(version_file, "__hash__", data["hash"])
 
@@ -388,4 +417,13 @@ def process(
         txt = apply_fixers(path.read_text(), fixers)
         tmpl = env.from_string(txt)
         path.write_text(tmpl.render(ctx=Context(**data)))
+
+    if record_path:
+        record_path.parent.mkdir(parents=True, exist_ok=True)
+        with record_path.open("w") as fp:
+            print("# autogenerate build file", file=fp)
+            for key, value in sorted((gdata or {}).items()):
+                value = f"'{value}'" if isinstance(value, str) else value
+                print(f"{key} = {value}", file=fp)
+
     return data

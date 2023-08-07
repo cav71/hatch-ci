@@ -416,6 +416,8 @@ Key[workflow] = master
 
     # clean and switch to new branch
     repo.revert(repo.initfile)
+    (repo.initfile.parent / "_build.py").unlink()
+
     write_tfile(tfile)
     repo.branch("beta/1.2.3", "master")
 
