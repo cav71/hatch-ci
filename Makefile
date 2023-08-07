@@ -14,7 +14,7 @@ build:
        "run_number": 14, \
        "run_id": 5753082134 \
     }\
-    ' python -m build
+    ' python -m build -n
 
 .PHONY: test
 test:
