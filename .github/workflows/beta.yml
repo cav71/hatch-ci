@@ -73,6 +73,8 @@ jobs:
         env:
           GITHUB_DUMP: ${{ toJson(github) }}
         run: |
+          # special handling for hatch-ci
+          python -m pip install --edit .
           python -m build
 
       - name: Small fix
