@@ -68,10 +68,7 @@ jobs:
         env:
           GITHUB_DUMP: ${{ toJson(github) }}
         run: |
-          # special handling for hatch-ci
-          python -m pip install hatchling typing-extensions jinja2
-          python -m pip install .
-          python -m build -n --wheel
+          python -m build
 
       - name: Publish packages to pypi (release)
         shell: bash
