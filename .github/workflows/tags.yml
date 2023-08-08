@@ -70,7 +70,7 @@ jobs:
         run: |
           # special handling for hatch-ci
           python -m pip install --edit .
-          python -m build --wheel
+          python -m build -n --wheel
 
       - name: Publish packages to pypi (release)
         shell: bash

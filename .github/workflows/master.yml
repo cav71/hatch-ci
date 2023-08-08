@@ -74,7 +74,7 @@ jobs:
           GITHUB_DUMP: ${{ toJson(github) }}
         run: |
           # special handling for hatch-ci
-          python -m build --wheel
+          python -m build -n --wheel
 
       - name: Small fix
         run: touch .keepme
