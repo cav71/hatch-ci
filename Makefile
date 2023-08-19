@@ -13,7 +13,7 @@ export GITHUB_DUMP
 
 
 help:
-	@echo "make help|build"
+	@echo "make help|build|tests"
 	@echo ""
 	@echo "Vars"
 	@echo "  REF:          $(REF)"
@@ -48,6 +48,6 @@ debug: build
 	cd build && unzip ../dist/out.zip
 	git checkout README.md src/hatch_ci/__init__.py
 
-.PHONY: test
-test:
+.PHONY: tests
+tests:
 	PYTHONPATH=src py.test -vvs tests

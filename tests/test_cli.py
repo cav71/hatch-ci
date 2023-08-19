@@ -1,7 +1,7 @@
 import contextlib
 from unittest import mock
 
-from setuptools_github import cli
+from hatch_ci import cli
 
 
 def test_exception():
