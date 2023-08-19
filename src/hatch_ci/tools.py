@@ -95,8 +95,11 @@ def list_of_paths(paths: str | Path | list[str | Path] | None) -> list[Path]:
     return [Path(s) for s in ([paths] if isinstance(paths, (str, Path)) else paths)]
 
 
-def lstrip(txt: str, left: str) -> str:
-    return txt[len(left) :] if txt.startswith(left) else txt
+def lstrip(txt: str, ending: str | list[str]) -> str:
+    endings = ending if isinstance(ending, list) else [ending]
+    for left in endings:
+        txt = txt[len(left) :] if txt.startswith(left) else txt
+    return txt
 
 
 def loadmod(path: Path) -> Any:
@@ -261,6 +264,24 @@ def bump_version(version: str, mode: str) -> str:
     return ".".join(str(v) for v in newver)
 
 
+def validate_gdata(
+    gdata: dict[str, Any], abort: bool = True
+) -> tuple[set[str], set[str]]:
+    keys = {
+        "ref",
+        "sha",
+        "run_id",
+        "run_number",
+    }
+    missing = keys - set(gdata)
+    extra = set(gdata) - keys
+    if abort and missing:
+        raise ToolsError(
+            f"missing keys from gdata '{','.join(missing)}'", missing, extra, gdata
+        )
+    return missing, extra
+
+
 def get_data(
     version_file: str | Path,
     github_dump: str | None = None,
@@ -276,12 +297,34 @@ def get_data(
 
     Returns:
         dict[str,str|None]: a dict with the current config
+        dict[str,str|None]: a dict with the github dump data
+
+    Example:
+        for github data:
+            {
+                "ref": "refs/heads/beta/0.3.10",
+                "run_id": "5904313530",
+                "run_number": "98",
+                "sha": "507c657056d1a66520ec6b219a64706e70b0ff15",
+            }
+        for data:
+            {
+                "branch": "beta/0.3.10",
+                "build": "98",
+                "current": "0.3.10",
+                "ref": "refs/heads/beta/0.3.10",
+                "runid": "5904313530",
+                "sha": "507c657056d1a66520ec6b219a64706e70b0ff15",
+                "version": "0.3.10b98",
+                "workflow": "beta",
+            }
     """
-    result = {
+    data = {
         "version": get_module_var(version_file, "__version__"),
         "current": get_module_var(version_file, "__version__"),
+        "ref": None,
         "branch": None,
-        "hash": None,
+        "sha": None,
         "build": None,
         "runid": None,
         "workflow": None,
@@ -297,18 +340,23 @@ def get_data(
                 f"cannot figure out settings (no repo in {path}, "
                 f"a GITHUB_DUMP or a _build.py file)"
             )
-        return result, {}
+        return data, {}
 
     dirty = False
     if github_dump:
         gdata = json.loads(github_dump) if isinstance(github_dump, str) else github_dump
     elif record_path and record_path.exists():
         mod = loadmod(record_path)
-        gdata = {k: getattr(mod, k) for k in dir(mod) if not k.startswith("_")}
+        gdata = {
+            "ref": mod.ref,
+            "sha": mod.sha,
+            "run_number": mod.build,
+            "run_id": mod.runid,
+        }
     elif repo:
         gdata = {
             "ref": repo.head.name,
-            "sha": repo.head.target.hex[:7],
+            "sha": repo.head.target.hex,
             "run_number": 0,
             "run_id": 0,
         }
@@ -316,16 +364,21 @@ def get_data(
     else:
         raise RuntimeError("un-reacheable code")
 
+    # make sure we have all keys
+    validate_gdata(gdata)
+
     expr = re.compile(r"/(?P<what>beta|release)/(?P<version>\d+([.]\d+)*)$")
     expr1 = re.compile(r"(?P<version>\d+([.]\d+)*)(?P<num>b\d+)?$")
 
-    result["branch"] = lstrip(gdata["ref"], "refs/heads/")
-    result["hash"] = gdata["sha"] + ("*" if dirty else "")
-    result["build"] = gdata["run_number"]
-    result["runid"] = gdata["run_id"]
-    result["workflow"] = result["branch"]
+    data["ref"] = gdata["ref"]
+    data["sha"] = gdata["sha"] + ("*" if dirty else "")
+    data["build"] = gdata["run_number"]
+    data["runid"] = gdata["run_id"]
 
-    current = result["current"]
+    data["branch"] = lstrip(gdata["ref"], ["refs/heads/", "refs/tags/"])
+    data["workflow"] = data["branch"]
+
+    current = data["current"]
     if match := expr.search(gdata["ref"]):
         # setuptools double calls the update_version,
         # this fixes the issue
@@ -338,11 +391,11 @@ def get_data(
                 f"branch ({match.groupdict()} mismatch {match1.groupdict()})"
             )
         if match.group("what") == "beta":
-            result["version"] = f"{match1.group('version')}b{gdata['run_number']}"
-            result["workflow"] = "beta"
+            data["version"] = f"{match1.group('version')}b{gdata['run_number']}"
+            data["workflow"] = "beta"
         else:
-            result["workflow"] = "tags"
-    return result, gdata
+            data["workflow"] = "tags"
+    return data, gdata
 
 
 def update_version(
@@ -360,16 +413,16 @@ def update_version(
 
     data = get_data(version_file, github_dump, abort=abort)[0]
     set_module_var(version_file, "__version__", data["version"])
-    set_module_var(version_file, "__hash__", data["hash"])
+    set_module_var(version_file, "__hash__", (data["sha"] or "")[:7])
     return data["version"]
 
 
 def process(
     version_file: str | Path,
     github_dump: str | None = None,
+    record: str | Path = "_build.py",
     paths: str | Path | list[str | Path] | None = None,
     fixers: dict[str, str] | None = None,
-    record: str | Path = "_build.py",
     abort: bool = True,
 ) -> dict[str, str | None]:
     """get version from github_dump and updates version_file/paths
@@ -409,7 +462,7 @@ def process(
     record_path = (Path(version_file).parent / record).absolute() if record else None
     data, _ = get_data(version_file, github_dump, record_path, abort)
     set_module_var(version_file, "__version__", data["version"])
-    set_module_var(version_file, "__hash__", data["hash"])
+    set_module_var(version_file, "__hash__", (data["sha"] or "")[:7])
 
     env = Environment(autoescape=True)
     env.filters["urlquote"] = partial(quote, safe="")

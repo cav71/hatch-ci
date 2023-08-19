@@ -1,4 +1,5 @@
 click
+coveragepy
 jinja2
 lxml
 mock
@@ -8,7 +9,7 @@ pre-commit
 pyfakefs
 pygit2
 pytest
-typing_extensions
 pytest-cov
 pytest-html
 ruff
+typing_extensions
