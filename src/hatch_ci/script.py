@@ -72,6 +72,8 @@ def main(options) -> None:
         if "init.defaultbranch" in options.repo.config
         else "master"
     )
+    current = options.repo.head.shorthand
+    log.info("current branch '%s'", current)
 
     if options.repo.status(untracked_files="no", ignored=False):
         options.error(f"modified files in {options.repo.workdir}")
@@ -98,6 +100,7 @@ def main(options) -> None:
             options.error(f"branch '{branch}' already present")
         log.info("creating branch '%s'", f"/beta/{version}")
         options.repo.branch(f"beta/{version}", master)
+        options.repo.checkout(current)
         print(  # noqa: T201
             tools.indent(
                 f"""
