@@ -4,7 +4,7 @@
 [![Python versions](https://img.shields.io/pypi/pyversions/hatch-ci.svg)](https://pypi.org/project/hatch-ci)
 [![License - MIT](https://img.shields.io/badge/license-MIT-9400d3.svg)](https://spdx.org/licenses/)
 
-[![Build](https://github.com/cav71/hatch-ci/actions/workflows/master.yml/badge.svg)](https://github.com/cav71/hatch-ci/actions/workflows/master.yml)
+[![Build](https://github.com/cav71/hatch-ci/actions/workflows/master.yml/badge.svg)](https://github.com/cav71/hatch-ci/actions/runs/0)
 [![codecov](https://codecov.io/gh/cav71/hatch-ci/branch/master/graph/badge.svg?token=521FB9K5KT)](https://codecov.io/gh/cav71/hatch-ci/branch/master)
 
 [![Black](https://img.shields.io/badge/code%20style-black-000000.svg)](Black)
@@ -12,8 +12,19 @@
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
 
-This provides a plugin to [Hatch](https://github.com/pypa/hatch) leveraging a CI/CD system (github at the moment)
-to deliver packages to [PyPi](https://pypi.org).
+This is a [hatch-vcs](https://github.com/ofek/hatch-vcs) heavily inspired pluging, managing the 
+version information for a python wheel package.
+
+It gets version information from:
+- **version-file** entry in the tool.hatch.version toml entry (eg. 1.0.0) in the master branch
+- augments it with a **bNNN** build number in creating the package foobar-1.0.0bNNNN (this can be sent to [PyPi](https://pypi.org))
+- if there's a tag v1.0.0 on the repo, it will build foobar-1.0.0 release (this can be sent to [PyPi](https://pypi.org))
+
+The last two steps are mean to be managed in a CI/CD system (github at the moment), to ensure *hands-off* releases.
+
+In essence this pluging:
+- manages the version information
+- allows version replacement in text files using build information
 
 > **NOTE**: this is heavily inspired from  [hatch-vcs](https://github.com/ofek/hatch-vcs)
 
@@ -39,11 +50,16 @@ build-backend = "hatchling.build"
 
 The [version source plugin](https://hatch.pypa.io/latest/plugins/version-source/reference/) name is `ci`.
 
+This will enable the hatch-ci pluging:
+
 - ***pyproject.toml***
 
     ```toml
-    [tool.hatch.version]
-    source = "ci"
+    [project]
+    ..
+    dynamic = ["version"]  # this rerieves the version dynamically
+    ..
+
     ```
 
 ### Version source options
@@ -52,16 +68,18 @@ The [version source plugin](https://hatch.pypa.io/latest/plugins/version-source/
 
     ```toml
     [tool.hatch.version]
-    source = "ci"
+    source = "ci"  # this pulls the version using the hatch-ci hook
 
-    # this will be updated with __version__ and __hash__ info
+    # this will put/update __version__ and __hash__ info in version-file
     version-file = "src/hatch_ci/__init__.py"
 
-    # the files here will be jinja2 processed dynamicaly at build time
+    # these files will be jinja2 processed, the environment will
+    # contains variables as: branch, build, current, ref, runid, 
+    # sha, version, workflow etc.
     paths = [ "README.md" ]
     
-    # the paths will have the strings 'a' & 'b' replaced before
-    # jinja2 processing
+    # the listed paths will undergo replacement before jinja2 processing and
+    # the strings 'a' & 'b' wil be replaced
     fixers = [
         { 'a': '{ctx.workflows}' },
         { 'd': '{ctx.branch}' }

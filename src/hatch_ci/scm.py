@@ -140,7 +140,20 @@ class GitRepo(GitRepoBase):
         self(["checkout", *sources])
 
     @property
+    def detached(self):
+        try:
+            self(["symbolic-ref", "HEAD"]).strip()
+        except subprocess.CalledProcessError:
+            ref = (self.gitdir / "HEAD").read_text().strip()
+            if re.search("^[a-fA-F0-9]+$", ref):
+                return GitRepoHead(name="refs/heads/master", target=ref)
+
+    @property
     def head(self):
+        # handles the detached git mode (used by pip)
+        if head := self.detached:
+            return head
+
         name = self(["symbolic-ref", "HEAD"]).strip()
         try:
             txt = self(["rev-parse", name]).strip()

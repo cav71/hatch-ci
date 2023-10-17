@@ -134,3 +134,17 @@ REPO: {project.workdir}
 
     repox = scm.GitRepo(project.workdir)
     assert project.dumps() == repox.dumps()
+
+
+def test_detached_head(git_project_factory):
+    repo = git_project_factory("test_detached_head-repo").create("0.0.0")
+    assert repo(["symbolic-ref", "HEAD"]).strip() == "refs/heads/master"
+    assert not repo.detached
+
+    repo1 = git_project_factory("test_check_version-repo1").create(clone=repo)
+    assert repo1(["symbolic-ref", "HEAD"]).strip() == "refs/heads/master"
+    assert not repo1.detached
+
+    ref = repo1(["rev-parse", "refs/heads/master"]).strip()
+    (repo1.workdir / ".git/HEAD").write_text(ref)
+    pytest.raises(subprocess.CalledProcessError, repo1, ["symbolic-ref", "HEAD"])
