@@ -146,7 +146,9 @@ class GitRepo(GitRepoBase):
         except subprocess.CalledProcessError:
             ref = (self.gitdir / "HEAD").read_text().strip()
             if re.search("^[a-fA-F0-9]+$", ref):
-                return GitRepoHead(name="refs/heads/master", target=ref)
+                return GitRepoHead(
+                    name="refs/heads/master", target=GitRepoHead.GitRepoHeadHex(ref)
+                )
 
     @property
     def head(self):

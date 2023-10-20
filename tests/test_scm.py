@@ -148,3 +148,7 @@ def test_detached_head(git_project_factory):
     ref = repo1(["rev-parse", "refs/heads/master"]).strip()
     (repo1.workdir / ".git/HEAD").write_text(ref)
     pytest.raises(subprocess.CalledProcessError, repo1, ["symbolic-ref", "HEAD"])
+    assert repo1.detached
+
+
+
