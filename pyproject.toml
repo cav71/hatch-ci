@@ -50,7 +50,7 @@ ci = "hatch_ci.hooks"
 [tool.hatch.version]
 source = "ci"
 version-file = "src/hatch_ci/__init__.py"
-paths = [ "README.md" ]
+paths = [ "README.md", "TEMPLATE.md" ]
 fixers = [
     # for the github actions
     [ 're:(https://github.com/.+/actions/workflows/)(master)(.yml/badge.svg)',

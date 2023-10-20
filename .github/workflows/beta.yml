@@ -74,6 +74,7 @@ jobs:
           GITHUB_DUMP: ${{ toJson(github) }}
         run: |
           python -m build
+          cat TEMPLATE.md
 
       - name: Small fix
         run: touch .keepme
