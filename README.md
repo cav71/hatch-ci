@@ -79,12 +79,13 @@ This will enable the hatch-ci pluging:
     paths = [ "README.md" ]
     
     # the listed paths will undergo replacement before jinja2 processing and
-    # the strings 'a' & 'b' wil be replaced
+    # the variables 'a' & 'b' listed below wil be replaced with ctx attributes.
     fixers = [
         { 'a': '{ctx.workflows}' },
         { 'd': '{ctx.branch}' }
     ]
     ```
+    The complete list of attributes is available here [TEMPLATE.md](TEMPLATE.md).
 
 | Option | Type | Default | Description                                          |
 | --- | --- |---------|------------------------------------------------------|

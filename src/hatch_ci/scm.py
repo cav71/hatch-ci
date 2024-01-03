@@ -175,6 +175,7 @@ class GitRepo(GitRepoBase):
             " D": 512,
             "D ": 4,
             " M": 256,
+            "MM": 258,
             "A ": 1,
         }
         result: dict[str, int] = {}
