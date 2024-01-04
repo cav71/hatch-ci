@@ -7,7 +7,6 @@ mypy
 mypy-extensions
 pre-commit
 pyfakefs
-# pygit2
 pytest
 pytest-cov
 pytest-html
