@@ -12,12 +12,33 @@
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
 
-This is a [hatch-vcs](https://github.com/ofek/hatch-vcs) heavily inspired pluging, managing the 
-version information for a python wheel package.
+## Introduction
+This is a [hatch-vcs](https://github.com/ofek/hatch-vcs) heavily inspired plugin: it captures values from
+the build environment (eg. github) and uses them to modify files during 
+the wheel build phase.
 
-It gets version information from:
-- **version-file** entry in the tool.hatch.version toml entry (eg. 1.0.0) in the master branch
-- augments it with a **bNNN** build number in creating the package foobar-1.0.0bNNNN (this can be sent to [PyPi](https://pypi.org))
+In the simplest way all you have to do is setting up the pyproject.toml as:
+```text
+[build-system]
+requires = ["hatchling", "hatch-ci"]
+build-backend = "hatchling.build"
+
+[project]
+dynamic = ["version"]
+
+[tool.hatch.version]
+version-file = "src/package/__init__.py"
+```
+
+### wheel version
+During the wheel build the version is dynamically updated with information taken from
+the `version-file` field (see "[Version source options](#version-source-options)").
+
+Two variables will be overwritten/modified in `version-file`: the **__version__** 
+containing the semgrep version and **__hash__** with the git commit for the build.
+
+The version information is augmented with:
+- a **bNNN** build number in creating the package foobar-1.0.0bNNNN (this can be sent to [PyPi](https://pypi.org))
 - if there's a tag v1.0.0 on the repo, it will build foobar-1.0.0 release (this can be sent to [PyPi](https://pypi.org))
 
 The last two steps are mean to be managed in a CI/CD system (github at the moment), to ensure *hands-off* releases.
@@ -26,7 +47,6 @@ In essence this pluging:
 - manages the version information
 - allows version replacement in text files using build information
 
-> **NOTE**: this is heavily inspired from  [hatch-vcs](https://github.com/ofek/hatch-vcs)
 
 
 **Table of Contents**
