@@ -6,7 +6,7 @@ on:
       - 'beta/**'
 env:
   PACKAGE: hatch_ci
-  XTARGET: '3.11'
+  XTARGET: '3.12'
 
 jobs:
   build:
@@ -143,6 +143,7 @@ jobs:
 
       - name: Publish packages to pypi (beta)
         uses: pypa/gh-action-pypi-publish@release/v1
+        if: ${{ matrix.python-version == env.XTARGET }}
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
   
