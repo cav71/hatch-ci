@@ -13,6 +13,7 @@ def test_lookup(git_project_factory):
     assert (dstdir / "out.txt").exists()
 
     assert str(scm.lookup(dstdir).workdir) == f"{repo.workdir}"
+    assert scm.lookup(dstdir.parent.parent.parent.parent) is None
 
 
 def test_handle_remote_and_local_repos(git_project_factory):

@@ -273,7 +273,7 @@ class GitRepo(GitRepoBase):
 def lookup(path: Path) -> GitRepo | None:
     cur = path
     found = False
-    while not found:
+    while not found and cur != cur.parent:
         if (cur / ".git").exists():
             return GitRepo(cur)
         if str(cur) == cur.root:
