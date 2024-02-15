@@ -136,10 +136,6 @@ jobs:
           override_branch: ${{ github.ref_name }}
 
       - name: Publish packages to pypi (beta)
-        shell: bash
-        env:
-          TWINE_USERNAME: ${{ secrets.TWINE_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD }}
-        run: |
-          twine upload --skip-existing --non-interactive --repository pypi dist/*
+        permissions: id-token: write
+        uses: pypa/gh-action-pypi-publish@release/v1
   
