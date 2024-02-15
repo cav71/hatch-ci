@@ -14,8 +14,25 @@
 
 ## Introduction
 This is a [hatch-vcs](https://github.com/ofek/hatch-vcs) heavily inspired plugin: it captures values from
-the build environment (eg. github) and uses them to modify files during 
+the build environment (eg. github) and it uses to modify source files during 
 the wheel build phase.
+
+This is a typical project (let's call it foobar):
+
+```
+└── foobar-project
+    ├── pyproject.toml
+    └── src
+        └── foobar
+            └── __init__.py (this contains __version__ and 
+                             __hash__ variables that will be 
+                             updated during the build)
+```
+
+Issuing the:
+``
+python -m build .
+``
 
 In the simplest way all you have to do is setting up the pyproject.toml as:
 ```text
