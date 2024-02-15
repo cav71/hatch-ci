@@ -61,7 +61,7 @@ class GitRepoBranches:
 class GitRepoHead:
     @dc.dataclass
     class GitRepoHeadHex:
-        hex: str  # noqa: A003
+        hex: str
 
     name: str
     target: GitRepoHeadHex

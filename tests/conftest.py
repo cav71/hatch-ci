@@ -11,7 +11,7 @@ import sys
 import pytest
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "src"))
-from hatch_ci import scm  # noqa F401,E402
+from hatch_ci import scm  # F401,E402
 
 
 @pytest.fixture()
