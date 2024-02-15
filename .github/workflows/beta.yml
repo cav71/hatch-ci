@@ -96,8 +96,11 @@ jobs:
         os: [ubuntu-latest]
         python-version: ["3.8", "3.9", "3.10", "3.11",]
     runs-on: ${{ matrix.os }}
+    environment:
+        name: pypi
+        url: https://pypi.org/project/hatch-ci
     permissions:
-      id-token: write
+        id-token: write
     needs: build
     steps:
       - name: Checkout
@@ -138,8 +141,5 @@ jobs:
           override_branch: ${{ github.ref_name }}
 
       - name: Publish packages to pypi (beta)
-        environment:
-            name: pypi
-	        url: https://pypi.org/project/hatch-ci/
         uses: pypa/gh-action-pypi-publish@release/v1
   
