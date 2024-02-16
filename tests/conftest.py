@@ -182,7 +182,7 @@ def git_project_factory(request, tmp_path):
             return self
 
     class Project(GitRepoBase):
-        def __init__(self, name, *args, **kwargs):
+        def __init__(self, name="", *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.name = name
 

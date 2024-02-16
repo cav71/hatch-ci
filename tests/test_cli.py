@@ -47,16 +47,17 @@ def test_cli_call_help():
     with contextlib.ExitStack() as stack:
 
         def xxx(self, parser, namespace, values, option_string=None):
+            parser.prog = "OOOO"
             found = (
                 parser.format_help()
                 .strip()
-                .replace(" py.test ", " pytest ")
+                #.replace(" py.test ", " pytest ")
                 .replace("optional arguments:", "options:")
             )
             assert (
                 found
                 == """
-usage: pytest [-h] [-n] [-v]
+usage: OOOO [-h] [-n] [-v]
 
 options:
   -h, --help     show this help message and exit
