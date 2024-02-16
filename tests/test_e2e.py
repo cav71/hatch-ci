@@ -66,7 +66,7 @@ def extract(path, items):
 def test_master_branch(project):
     repo = project("foobar", "0.0.0")
 
-    subprocess.check_call(["python", "-m", "build", "-n",],  # noqa: S603,S607
+    subprocess.check_call(["python", "-m", "build",],  # noqa: S603,S607
                           cwd=repo.workdir)
 
     path = repo.workdir / "dist" / f"{repo.name}-{repo.version()}-py3-none-any.whl"
