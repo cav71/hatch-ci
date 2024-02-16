@@ -10,5 +10,6 @@ pyfakefs
 pytest
 pytest-cov
 pytest-html
+pytest-subtests
 ruff
 typing_extensions

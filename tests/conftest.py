@@ -2,25 +2,62 @@ from __future__ import annotations
 
 import collections
 import contextlib
+import dataclasses as dc
 import os
-import pathlib
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from hatch_ci import scm  # F401,E402
 
 
 @pytest.fixture()
 def datadir(request):
-    basedir = pathlib.Path(__file__).parent / "data"
+    """return the Path object to the tests datadir
+
+    Examples:
+        # This will print the tests/data directory
+        # (unless overridden using DATADIR env)
+        >>> def test_me(datadir):
+        >>>    print(datadir)
+    """
+    basedir = Path(__file__).parent / "data"
     if os.getenv("DATADIR"):
-        basedir = pathlib.Path(os.getenv("DATADIR"))
+        basedir = Path(os.getenv("DATADIR"))
     basedir = basedir / getattr(request.module, "DATADIR", "")
     return basedir
+
+
+@pytest.fixture(scope="function")
+def resolver(request, datadir):
+    """return a resolver object to lookup for test data
+
+    Examples:
+        >>> def test_me(resolver):
+        >>>     print(resolver.lookup("a/b/c"))
+    """
+    @dc.dataclass
+    class Resolver:
+        root: Path
+        name: str
+
+        def lookup(self, path: Path | str) -> Path:
+            candidates = [
+                self.root / self.name / path,
+                self.root / path,
+            ]
+            for candidate in candidates:
+                if candidate.exists():
+                    return candidate
+            raise FileNotFoundError(f"cannot find {path}", candidates)
+
+    yield Resolver(
+        datadir,
+        request.module.__name__)
 
 
 @pytest.fixture()
@@ -52,7 +89,7 @@ def scripter(request, tmp_path_factory, datadir):
             self.workdir = workdir
             self.datadir = datadir
             self.exe = exe
-            if not pathlib.Path(script).exists():
+            if not Path(script).exists():
                 raise MissingItemError(f"script file {script} not found")
 
         def run(self, args, cwd=None, load_data=True):
@@ -95,10 +132,10 @@ def scripter(request, tmp_path_factory, datadir):
             self.exe = exe
 
         def __truediv__(self, path):
-            tmpdir = tmp_path_factory.mktemp(pathlib.Path(path).with_suffix("").name)
+            tmpdir = tmp_path_factory.mktemp(Path(path).with_suffix("").name)
             return Exe(self.srcdir / path, tmpdir, self.datadir, self.exe)
 
-    return Scripter(pathlib.Path(request.module.__file__).parent, datadir)
+    return Scripter(Path(request.module.__file__).parent, datadir)
 
 
 @pytest.fixture(scope="function")
@@ -145,9 +182,13 @@ def git_project_factory(request, tmp_path):
             return self
 
     class Project(GitRepoBase):
+        def __init__(self, name, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.name = name
+
         @property
         def initfile(self):
-            return self.workdir / "src" / "__init__.py"
+            return self.workdir / "src" / (self.name or "") / "__init__.py"
 
         def version(self, value=None):
             if value is not None:
@@ -168,7 +209,10 @@ def git_project_factory(request, tmp_path):
             ]
             return lines[0] if lines else None
 
-        def create(self, version=None, clone=None, force=False, nobranch=False):
+        def create(self, version=None,
+                   clone=None,
+                   subdir=None,
+                   force=False, nobranch=False):
             if clone:
                 clone.clone(self.workdir, force=force)
             else:
@@ -184,9 +228,39 @@ def git_project_factory(request, tmp_path):
             choice(ascii_uppercase + digits) for _ in range(size)  # noqa: S311
         )
 
-    return lambda subdir="": Project(tmp_path / (subdir or id_generator()))
+    return lambda subdir="", name="": Project(name,
+                                              tmp_path / (subdir or id_generator()))
     # or request.node.name
 
+
+@pytest.fixture(scope="function")
+def mktree(tmp_path):
+    """
+    Args:
+        tmp_path (str): The temporary path where the tree structure will be created.
+
+    Returns:
+        function: A nested function that creates a directory tree or
+        files within the given temporary path.
+
+    """
+    def create(txt, mode=None, subpath=""):
+        mode = mode or ("tree" if "─ " in txt else "txt" )
+        if mode == "tree":
+            from hatch_ci import tree
+            tree.write(Path(tmp_path) / subpath, tree.parse(txt))
+        else:
+            for path in [f for f in txt.split("\n") if f.strip()]:
+                dst = Path(tmp_path) / subpath / path.strip()
+                if path.strip().startswith("#"):
+                    continue
+                elif path.strip().endswith("/"):
+                    dst.mkdir(exist_ok=True, parents=True)
+                else:
+                    dst.parent.mkdir(exist_ok=True, parents=True)
+                    dst.write_text("")
+        return Path(tmp_path) / subpath
+    return create
 
 #####################
 # Main flags/config #
