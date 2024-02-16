@@ -1,4 +1,6 @@
+#!/usr/bin/env python
 import os
+import sys
 from pathlib import Path
 
 import build.__main__
@@ -31,6 +33,8 @@ def cleanup(workdir: Path):
 if __name__ == "__main__":
     workdir = Path(__file__).parent
     os.chdir(workdir)
-    print("CWD", Path.cwd())  # noqa: T201
-    cleanup(workdir)
-    build.__main__.main(["-n", "."], "python -m build")
+    if sys.argv[1] in {"clean", "build"}:
+        cleanup(workdir)
+
+    if sys.argv[1] in "build":
+        build.__main__.main(["."], "python -m build")

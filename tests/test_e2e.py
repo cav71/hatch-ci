@@ -1,8 +1,11 @@
 import re
 import subprocess
 import zipfile
+from pathlib import Path
 
 import pytest
+
+import hatch_ci
 
 
 @pytest.fixture(scope="function")
@@ -23,14 +26,15 @@ def hello():
     pass
         """)
 
+        srcdir = str(Path(hatch_ci.__file__).parent.parent.parent).replace("\\", "/")
         paths.append(repo.workdir / "pyproject.toml")
         paths[-1].write_text(f"""
 [build-system]
 requires = [
     "hatchling>=1.1.0",
     "typing-extensions",
-    "hatch-ci",
-    "jinja2"
+    "jinja2",
+    "-e file://{srcdir}"
 ]
 build-backend = "hatchling.build"
 
