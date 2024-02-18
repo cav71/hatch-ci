@@ -78,12 +78,11 @@ if __name__ == "__main__":
     workdir = Path(__file__).parent
     builddir = workdir / "build"
     os.chdir(workdir)
-    # modes: clean | build | sdist
-    mode = sys.argv[1]
 
-    if mode in {"clean", "clean-all", "build", "sdist"}:
+    mode = sys.argv[1]
+    if mode in {"clean", "clean-all", "build", "sdist", "build_wheel"}:
         cleanup(workdir)
-        if mode in {"clean-all", "sdist"}:
+        if mode in {"clean-all", "sdist", "build_wheel"}:
             rm(builddir / "xyz")
             rm(builddir / "xyz-dist")
     else:
@@ -94,28 +93,6 @@ if __name__ == "__main__":
     elif mode == "sdist":
         run_inprocess("build_sdist", workdir, builddir)
         print(f" results under -> {builddir}")  # noqa: T201
-        # (builddir / "xyz").mkdir(parents=True, exist_ok=True)
-        # (builddir / "xyz-dist").mkdir(parents=True, exist_ok=True)
-        # (builddir / "xyz" / "input.json").write_text(
-        #     json.dumps({
-        #         "kwargs": {
-        #             "sdist_directory" : str((builddir / "xyz-dist").absolute()),
-        #             "config_settings": {},
-        #         },
-        #     })
-        # )
-        # cmd = [ str(c) for c in [
-        #     sys.executable,
-        #     Path(pyproject_hooks._in_process._in_process.__file__),
-        #     "build_sdist",
-        #     (workdir / "build" / "xyz").absolute(),
-        # ]]
-        # env = {"PEP517_BUILD_BACKEND": "hatchling.build"}
-        # #subprocess.check_call([str(c) for c in cmd], env=env)
-        #
-        # for key, val in env.items():
-        #     os.environ[key] = val
-        # sys.argv = cmd[1:]
-        # pyproject_hooks._in_process._in_process.main()
     elif mode == "build_wheel":
-        pass
+        run_inprocess("build_wheel", workdir, builddir)
+        print(f" results under -> {builddir}")  # noqa: T201
