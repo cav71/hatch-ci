@@ -47,7 +47,7 @@ def test_abort_exception():
         "a one-line error message",
         """
         A multi line
-          explaination of
+          explanation of
            what happened
          with some detail
     """,
@@ -62,7 +62,7 @@ def test_abort_exception():
         f"\n{a.explain}\n"
         == """
 A multi line
-  explaination of
+  explanation of
    what happened
  with some detail
 """
@@ -80,7 +80,7 @@ Another multiline hint how
         == """
 a one-line error message
   A multi line
-    explaination of
+    explanation of
      what happened
    with some detail
 hint:
