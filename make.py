@@ -1,7 +1,13 @@
 #!/usr/bin/env python
+import json
 import os
+
+# import subprocess
 import sys
 from pathlib import Path
+from unittest import mock
+
+import pyproject_hooks._in_process._in_process
 
 import build.__main__
 
@@ -12,7 +18,7 @@ def rm(path: Path):
     if not path.exists():
         return
     if path.is_dir():
-        rmtree(workdir / "dist")
+        rmtree(path)
     else:
         path.unlink()
 
@@ -30,11 +36,86 @@ def cleanup(workdir: Path):
     co(workdir / "src/hatch_ci/__init__.py")
 
 
+def create_sdist_env(
+    workdir: Path, builddir: Path
+) -> tuple[list[str | None], dict[str, str]]:
+    (builddir / "xyz").mkdir(parents=True, exist_ok=True)
+    (builddir / "xyz-dist").mkdir(parents=True, exist_ok=True)
+    (builddir / "xyz" / "input.json").write_text(
+        json.dumps(
+            {
+                "kwargs": {
+                    "sdist_directory": str((builddir / "xyz-dist").absolute()),
+                    "config_settings": {},
+                },
+            }
+        )
+    )
+    cmd = [
+        Path(pyproject_hooks._in_process._in_process.__file__),
+        None,
+        (workdir / "build" / "xyz").absolute(),
+    ]
+    env = {"PEP517_BUILD_BACKEND": "hatchling.build"}
+    return [c if c is None else str(c) for c in cmd], env
+
+
+def run_inprocess(target: str, workdir: Path, builddir: Path):
+    cmd, env = create_sdist_env(workdir, builddir)
+    assert cmd[1] is None  # noqa: S101
+    cmd[1] = target
+
+    old = sys.argv[:]
+    with mock.patch.dict(os.environ, env):
+        sys.argv = [str(c) for c in cmd]
+        try:
+            pyproject_hooks._in_process._in_process.main()
+        finally:
+            sys.argv = old
+
+
 if __name__ == "__main__":
     workdir = Path(__file__).parent
+    builddir = workdir / "build"
     os.chdir(workdir)
-    if sys.argv[1] in {"clean", "build"}:
-        cleanup(workdir)
+    # modes: clean | build | sdist
+    mode = sys.argv[1]
 
-    if sys.argv[1] in "build":
+    if mode in {"clean", "clean-all", "build", "sdist"}:
+        cleanup(workdir)
+        if mode in {"clean-all", "sdist"}:
+            rm(builddir / "xyz")
+            rm(builddir / "xyz-dist")
+    else:
+        raise NotImplementedError(f"mod [{mode}] not implemented")
+
+    if mode == "build":
         build.__main__.main(["."], "python -m build")
+    elif mode == "sdist":
+        run_inprocess("build_sdist", workdir, builddir)
+        print(f" results under -> {builddir}")  # noqa: T201
+        # (builddir / "xyz").mkdir(parents=True, exist_ok=True)
+        # (builddir / "xyz-dist").mkdir(parents=True, exist_ok=True)
+        # (builddir / "xyz" / "input.json").write_text(
+        #     json.dumps({
+        #         "kwargs": {
+        #             "sdist_directory" : str((builddir / "xyz-dist").absolute()),
+        #             "config_settings": {},
+        #         },
+        #     })
+        # )
+        # cmd = [ str(c) for c in [
+        #     sys.executable,
+        #     Path(pyproject_hooks._in_process._in_process.__file__),
+        #     "build_sdist",
+        #     (workdir / "build" / "xyz").absolute(),
+        # ]]
+        # env = {"PEP517_BUILD_BACKEND": "hatchling.build"}
+        # #subprocess.check_call([str(c) for c in cmd], env=env)
+        #
+        # for key, val in env.items():
+        #     os.environ[key] = val
+        # sys.argv = cmd[1:]
+        # pyproject_hooks._in_process._in_process.main()
+    elif mode == "build_wheel":
+        pass
