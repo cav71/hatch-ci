@@ -270,8 +270,8 @@ class GitRepo(GitRepoBase):
         return repo
 
 
-def lookup(path: Path) -> GitRepo | None:
-    cur = path
+def lookup(path: Path | str) -> GitRepo | None:
+    cur = Path(path)
     found = False
     while not found and cur != cur.parent:
         if (cur / ".git").exists():
