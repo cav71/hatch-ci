@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import ast
 import json
+import logging
 import re
 from pathlib import Path
 from typing import Any
 
 from . import scm
+
+log = logging.getLogger(__name__)
 
 
 class ToolsError(Exception):
@@ -290,9 +293,16 @@ def get_data(
 ) -> tuple[dict[str, str | None], dict[str, Any]]:
     """extracts version information from github_dump and updates version_file in-place
 
+    This gather version, branch, commit and other info from:
+
+    - version_file (eg. the __init__.py file containing __version__)
+    - github_dump *a json encoded dictionary in GITHUB_DUMP
+    - a record file (eg. _build.py)
+    - the git checkout (using git)
+
     Args:
         version_file (str, Path): path to a file  with a __version__ variable
-        github_dump (str): the os.getenv("GITHUB_DUMP") value
+        github_dump (str): the os.getenv("GITHUB_DUMP") value (a json structure)
         record: pull data from a _build.py file
 
     Returns:
@@ -319,6 +329,9 @@ def get_data(
                 "workflow": "beta",
             }
     """
+
+    # we fill this structure getting data from these sources:
+    #  github_dump -> record_path (eg. _build.py) -> repo infos (eg. the git checkout)
     data = {
         "version": get_module_var(version_file, "__version__"),
         "current": get_module_var(version_file, "__version__"),
@@ -362,7 +375,9 @@ def get_data(
         }
         dirty = repo.dirty()
     else:
-        raise RuntimeError("un-reacheable code")
+        raise RuntimeError(
+            "Unable to retrieve data from GITHUB_DUMP or " "{record_path=} or {repo=}"
+        )
 
     # make sure we have all keys
     validate_gdata(gdata)
@@ -370,10 +385,11 @@ def get_data(
     expr = re.compile(r"/(?P<what>beta|release)/(?P<version>\d+([.]\d+)*)$")
     expr1 = re.compile(r"(?P<version>\d+([.]\d+)*)(?P<num>b\d+)?$")
 
+    # update/fill the data values
     data["ref"] = gdata["ref"]
     data["sha"] = gdata["sha"] + ("*" if dirty else "")
-    data["build"] = gdata["run_number"]
-    data["runid"] = gdata["run_id"]
+    data["build"] = gdata["run_number"]  # unless in GITHUB_DUMP these are likely None
+    data["runid"] = gdata["run_id"]  # unless in GITHUB_DUMP these are likely None
 
     data["branch"] = lstrip(gdata["ref"], ["refs/heads/", "refs/tags/"])
     data["workflow"] = data["branch"]
