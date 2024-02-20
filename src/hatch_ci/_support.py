@@ -29,8 +29,6 @@ OUTPUT = None  # eg. r"C:\Users\antonio\Projects\github\hatch-ci\NOTES.txt"
 
 
 def is_scm(path: Path) -> str:
-    from pathlib import Path
-
     return "<git>" if (Path(path) / ".git").exists() else "<plain>"
 
 
