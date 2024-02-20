@@ -116,4 +116,4 @@ class Tracer:
         return _fn if self.path else method
 
 
-tracer = Tracer(r"C:\Users\antonio\Projects\github\hatch-ci\NOTES.txt")
+tracer = Tracer()  # r"C:\Users\antonio\Projects\github\hatch-ci\NOTES.txt")
