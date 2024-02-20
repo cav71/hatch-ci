@@ -139,6 +139,16 @@ def test_lstrip():
     assert tools.lstrip("/a/b/c/d/e", "/a/b") == "/c/d/e"
 
 
+def test_zextract(resolver):
+    ball = resolver.lookup("foobar-0.0.0-py3-none-any.whl")
+    data = tools.zextract(ball)
+    assert data["foobar/__init__.py"].strip() == '__version__ = "0.0.0"'
+
+    ball = resolver.lookup("foobar-0.0.0.tar.gz")
+    data = tools.zextract(ball)
+    assert data["foobar-0.0.0/src/foobar/__init__.py"].strip() == '__version__ = "0.0.0"'
+
+
 def test_apply_fixers():
     fixers = {
         "abc": "def",
