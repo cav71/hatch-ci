@@ -1,0 +1,84 @@
+C:\Users\antonio\envs\hatch-ci\Lib\site-packages\pyproject_hooks\_impl.py
+Patch pyproject_hooks._impl.BuildBackendHookCaller._call_hook with:
+
+            from pathlib import Path
+            from os import getpid
+            def is_scm(path):
+                return (Path(path) / ".git").exists()
+            def jformat(data, pre):
+                return (
+                    json.dumps(data, indent=2, sort_keys=True)
+                    .replace("\n", f"\n{pre}")
+                )
+            with open(r"C:\Users\antonio\Projects\github\hatch-ci\NOTES.txt", "a") as fp:
+                print(f"[pid={getpid()}]", file=fp)
+                print(f"<hook> '{hook_name}'", file=fp)
+                scm = "<git>" if (Path(self.source_dir) / ".git").exists() else "<plain>"
+                print(f"  cwd (self.source_dir): {self.source_dir} {scm}", file=fp)
+                print(f"  kwargs: {kwargs}", file=fp)
+                print(f"  extra_environ: {extra_environ}", file=fp)
+                j = json.dumps(hook_input, indent=2, sort_keys=True).replace("\n", "\n              ")
+                print(f"  input.json:", file=fp)
+                print(f"              {j}", file=fp)
+
+# in any hatch plugin, decorate methods here
+def decorator(method):
+    from functools import wraps
+    from os import getpid
+    from sys import argv
+    @wraps(method)
+    def _fn(self, *args, **kwargs):
+        def is_scm(path):
+            from pathlib import Path
+            return "<git>" if (Path(path) / ".git").exists() else "<plain>"
+        def jformat(data, pre):
+            from json import dumps
+            return (
+                dumps(data, indent=2, sort_keys=True)
+                .replace("\n", f"\n{' '*len(pre)}")
+            )
+        with open(r"C:\Users\antonio\Projects\github\hatch-ci\NOTES.txt", "a") as fp:
+            print(f"[pid={getpid()}] {argv=}", file=fp)
+            print(f"!callback! '{method.__name__}' {self.__class__.__name__}", file=fp)
+            print(f"  self.root: {self.root} {is_scm(self.root)}", file=fp)
+            print(f"  config: {jformat(self.config, '  config: ')}", file=fp)
+        return method(self, *args, **kwargs)
+    return _fn
+
+#############
+
+[pid=11080] sys.argv=['C:\\Users\\antonio\\envs\\hatch-ci\\Lib\\site-packages\\pyproject_hooks\\_in_process\\_in_process.py', 'build_sdist', 'C:\\Users\\antonio\\AppData\\Local\\Temp\\tmpwbsuib2n']
+!callback! 'get_version_data' CIVersionSource
+  self.root: C:\Users\antonio\AppData\Local\Temp\pytest-of-antonio\pytest-142\test_master_branch0\F0K362 <git>
+  config: {
+            "source": "ci",
+            "version-file": "src/foobar/__init__.py"
+          }
+
+[pid=11080] sys.argv=['C:\\Users\\antonio\\envs\\hatch-ci\\Lib\\site-packages\\pyproject_hooks\\_in_process\\_in_process.py', 'build_sdist', 'C:\\Users\\antonio\\AppData\\Local\\Temp\\tmpwbsuib2n']
+!callback! 'initialize' MyBuildHook
+  self.root: C:\Users\antonio\AppData\Local\Temp\pytest-of-antonio\pytest-142\test_master_branch0\F0K362 <git>
+  config: {}
+
+[pid=11080] sys.argv=['C:\\Users\\antonio\\envs\\hatch-ci\\Lib\\site-packages\\pyproject_hooks\\_in_process\\_in_process.py', 'build_sdist', 'C:\\Users\\antonio\\AppData\\Local\\Temp\\tmpwbsuib2n']
+!callback! 'finalize' MyBuildHook
+  self.root: C:\Users\antonio\AppData\Local\Temp\pytest-of-antonio\pytest-142\test_master_branch0\F0K362 <git>
+  config: {}
+
+[pid=21508] sys.argv=['C:\\Users\\antonio\\envs\\hatch-ci\\Lib\\site-packages\\pyproject_hooks\\_in_process\\_in_process.py', 'build_wheel', 'C:\\Users\\antonio\\AppData\\Local\\Temp\\tmpl20k7mdt']
+!callback! 'get_version_data' CIVersionSource
+  self.root: C:\Users\antonio\AppData\Local\Temp\build-via-sdist-hz_7v74x\foobar-0.0.0 <plain>
+  config: {
+            "source": "ci",
+            "version-file": "src/foobar/__init__.py"
+          }
+
+[pid=21508] sys.argv=['C:\\Users\\antonio\\envs\\hatch-ci\\Lib\\site-packages\\pyproject_hooks\\_in_process\\_in_process.py', 'build_wheel', 'C:\\Users\\antonio\\AppData\\Local\\Temp\\tmpl20k7mdt']
+!callback! 'initialize' MyBuildHook
+  self.root: C:\Users\antonio\AppData\Local\Temp\build-via-sdist-hz_7v74x\foobar-0.0.0 <plain>
+  config: {}
+
+[pid=21508] sys.argv=['C:\\Users\\antonio\\envs\\hatch-ci\\Lib\\site-packages\\pyproject_hooks\\_in_process\\_in_process.py', 'build_wheel', 'C:\\Users\\antonio\\AppData\\Local\\Temp\\tmpl20k7mdt']
+!callback! 'finalize' MyBuildHook
+  self.root: C:\Users\antonio\AppData\Local\Temp\build-via-sdist-hz_7v74x\foobar-0.0.0 <plain>
+  config: {}
