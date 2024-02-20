@@ -47,38 +47,38 @@ def decorator(method):
 
 #############
 
-[pid=11080] sys.argv=['C:\\Users\\antonio\\envs\\hatch-ci\\Lib\\site-packages\\pyproject_hooks\\_in_process\\_in_process.py', 'build_sdist', 'C:\\Users\\antonio\\AppData\\Local\\Temp\\tmpwbsuib2n']
+[pid=4280] sys.argv=['C:\\Users\\antonio\\envs\\hatch-ci\\Lib\\site-packages\\pyproject_hooks\\_in_process\\_in_process.py', 'build_sdist', 'C:\\Users\\antonio\\AppData\\Local\\Temp\\tmplbghv347']
 !callback! 'get_version_data' CIVersionSource
-  self.root: C:\Users\antonio\AppData\Local\Temp\pytest-of-antonio\pytest-142\test_master_branch0\F0K362 <git>
+  self.root: C:\Users\antonio\AppData\Local\Temp\pytest-of-antonio\pytest-150\test_master_branch0\J0C75J <git>
   config: {
             "source": "ci",
             "version-file": "src/foobar/__init__.py"
           }
 
-[pid=11080] sys.argv=['C:\\Users\\antonio\\envs\\hatch-ci\\Lib\\site-packages\\pyproject_hooks\\_in_process\\_in_process.py', 'build_sdist', 'C:\\Users\\antonio\\AppData\\Local\\Temp\\tmpwbsuib2n']
+[pid=4280] sys.argv=['C:\\Users\\antonio\\envs\\hatch-ci\\Lib\\site-packages\\pyproject_hooks\\_in_process\\_in_process.py', 'build_sdist', 'C:\\Users\\antonio\\AppData\\Local\\Temp\\tmplbghv347']
 !callback! 'initialize' MyBuildHook
-  self.root: C:\Users\antonio\AppData\Local\Temp\pytest-of-antonio\pytest-142\test_master_branch0\F0K362 <git>
+  self.root: C:\Users\antonio\AppData\Local\Temp\pytest-of-antonio\pytest-150\test_master_branch0\J0C75J <git>
   config: {}
 
-[pid=11080] sys.argv=['C:\\Users\\antonio\\envs\\hatch-ci\\Lib\\site-packages\\pyproject_hooks\\_in_process\\_in_process.py', 'build_sdist', 'C:\\Users\\antonio\\AppData\\Local\\Temp\\tmpwbsuib2n']
+[pid=4280] sys.argv=['C:\\Users\\antonio\\envs\\hatch-ci\\Lib\\site-packages\\pyproject_hooks\\_in_process\\_in_process.py', 'build_sdist', 'C:\\Users\\antonio\\AppData\\Local\\Temp\\tmplbghv347']
 !callback! 'finalize' MyBuildHook
-  self.root: C:\Users\antonio\AppData\Local\Temp\pytest-of-antonio\pytest-142\test_master_branch0\F0K362 <git>
+  self.root: C:\Users\antonio\AppData\Local\Temp\pytest-of-antonio\pytest-150\test_master_branch0\J0C75J <git>
   config: {}
 
-[pid=21508] sys.argv=['C:\\Users\\antonio\\envs\\hatch-ci\\Lib\\site-packages\\pyproject_hooks\\_in_process\\_in_process.py', 'build_wheel', 'C:\\Users\\antonio\\AppData\\Local\\Temp\\tmpl20k7mdt']
+[pid=39036] sys.argv=['C:\\Users\\antonio\\envs\\hatch-ci\\Lib\\site-packages\\pyproject_hooks\\_in_process\\_in_process.py', 'build_wheel', 'C:\\Users\\antonio\\AppData\\Local\\Temp\\tmp5urrfgqy']
 !callback! 'get_version_data' CIVersionSource
-  self.root: C:\Users\antonio\AppData\Local\Temp\build-via-sdist-hz_7v74x\foobar-0.0.0 <plain>
+  self.root: C:\Users\antonio\AppData\Local\Temp\build-via-sdist-h8tuf0cs\foobar-0.0.0 <plain>
   config: {
             "source": "ci",
             "version-file": "src/foobar/__init__.py"
           }
 
-[pid=21508] sys.argv=['C:\\Users\\antonio\\envs\\hatch-ci\\Lib\\site-packages\\pyproject_hooks\\_in_process\\_in_process.py', 'build_wheel', 'C:\\Users\\antonio\\AppData\\Local\\Temp\\tmpl20k7mdt']
+[pid=39036] sys.argv=['C:\\Users\\antonio\\envs\\hatch-ci\\Lib\\site-packages\\pyproject_hooks\\_in_process\\_in_process.py', 'build_wheel', 'C:\\Users\\antonio\\AppData\\Local\\Temp\\tmp5urrfgqy']
 !callback! 'initialize' MyBuildHook
-  self.root: C:\Users\antonio\AppData\Local\Temp\build-via-sdist-hz_7v74x\foobar-0.0.0 <plain>
+  self.root: C:\Users\antonio\AppData\Local\Temp\build-via-sdist-h8tuf0cs\foobar-0.0.0 <plain>
   config: {}
 
-[pid=21508] sys.argv=['C:\\Users\\antonio\\envs\\hatch-ci\\Lib\\site-packages\\pyproject_hooks\\_in_process\\_in_process.py', 'build_wheel', 'C:\\Users\\antonio\\AppData\\Local\\Temp\\tmpl20k7mdt']
+[pid=39036] sys.argv=['C:\\Users\\antonio\\envs\\hatch-ci\\Lib\\site-packages\\pyproject_hooks\\_in_process\\_in_process.py', 'build_wheel', 'C:\\Users\\antonio\\AppData\\Local\\Temp\\tmp5urrfgqy']
 !callback! 'finalize' MyBuildHook
-  self.root: C:\Users\antonio\AppData\Local\Temp\build-via-sdist-hz_7v74x\foobar-0.0.0 <plain>
+  self.root: C:\Users\antonio\AppData\Local\Temp\build-via-sdist-h8tuf0cs\foobar-0.0.0 <plain>
   config: {}
