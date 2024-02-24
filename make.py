@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 import json
 import os
-
-# import subprocess
 import sys
 from pathlib import Path
 from unittest import mock
