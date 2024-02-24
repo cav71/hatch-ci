@@ -45,7 +45,7 @@ jobs:
         env:
           PYTHONPATH: src
         run: |
-           ruff check --vorbose .
+           ruff check --verbose .
 
       - name: Static checks (mypy)
         shell: bash
