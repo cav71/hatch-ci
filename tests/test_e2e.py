@@ -1,3 +1,4 @@
+# noqa: I001
 import re
 from pathlib import Path
 
