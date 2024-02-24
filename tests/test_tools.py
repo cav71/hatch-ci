@@ -421,7 +421,6 @@ version = '0.3.10b98'
 workflow = 'beta'
 """.lstrip()
 
-    tools.process(repo.initfile, None, record)
 
 def test_process_fixers(git_project_factory):
     def write_tfile(tfile):

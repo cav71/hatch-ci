@@ -7,7 +7,7 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from . import scm
 
@@ -27,6 +27,10 @@ class InvalidVersionError(ToolsError):
 
 
 class MissingVariableError(ToolsError):
+    pass
+
+
+class _NO:
     pass
 
 
@@ -459,12 +463,37 @@ def update_version(
     return data["version"]
 
 
+def generate_build_record(
+    record_path: Path, data: dict[str, Any], exist_ok: bool = False
+) -> None:
+    record_path.parent.mkdir(parents=True, exist_ok=True)
+    with record_path.open("w") as fp:
+        print("# autogenerate build file", file=fp)
+        for key, value in sorted((data or {}).items()):
+            value = f"'{value}'" if isinstance(value, str) else value
+            print(f"{key} = {value}", file=fp)
+
+
+def get_option(
+    config: dict[str, str], var: str, typ: Any = _NO, fallback: Any = _NO
+) -> Any:
+    value = config.get(var, fallback)
+    if value is _NO:
+        raise ValidationError(f"cannot find variable '{var}' for plugin 'ci'")
+    try:
+        new_value = typ(value) if typ is not _NO else value
+    except Exception as exc:
+        raise ValidationError(f"cannot convert to {typ=} the {value=}") from exc
+    return new_value
+
+
 def process(
     version_file: str | Path,
     github_dump: str | None = None,
     record: str | Path = "_build.py",
     paths: str | Path | list[str | Path] | None = None,
     fixers: dict[str, str] | None = None,
+    backup: Callable[[Path | str], None] | None = None,
     abort: bool = True,
 ) -> dict[str, str | None]:
     """get version from github_dump and updates version_file/paths
@@ -503,6 +532,14 @@ def process(
 
     record_path = (Path(version_file).parent / record).absolute() if record else None
     data, _ = get_data(version_file, github_dump, record_path, abort)
+
+    if not backup:
+
+        def backup(_: Path | str) -> None:
+            pass
+
+    backup(version_file)
+
     set_module_var(version_file, "__version__", data["version"])
     set_module_var(version_file, "__hash__", (data["sha"] or "")[:7])
 
@@ -511,14 +548,10 @@ def process(
     for path in list_of_paths(paths):
         txt = apply_fixers(path.read_text(), fixers)
         tmpl = env.from_string(txt)
+        backup(path)
         path.write_text(tmpl.render(ctx=Context(**data)))
 
     if record_path:
-        record_path.parent.mkdir(parents=True, exist_ok=True)
-        with record_path.open("w") as fp:
-            print("# autogenerate build file", file=fp)
-            for key, value in sorted((data or {}).items()):
-                value = f"'{value}'" if isinstance(value, str) else value
-                print(f"{key} = {value}", file=fp)
+        generate_build_record(record_path, data)
 
     return data
