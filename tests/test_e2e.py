@@ -1,15 +1,15 @@
 import re
-import subprocess
-import zipfile
 from pathlib import Path
 
 import pytest
 
 import hatch_ci
+from build.__main__ import main as build
+from hatch_ci import tools
 
 
 @pytest.fixture(scope="function")
-def project(git_project_factory):
+def project(git_project_factory, monkeypatch):
     """creates a project with this structure
         ├── .git/
         ├── pyproject.toml
@@ -18,15 +18,24 @@ def project(git_project_factory):
                 ├── __init__.py  <- contains <version>
                 └── xyz.py
     """
-    def _make(name, version):
+    def _make(name, version, cwd=True, use_hatchci_from_env=False):
         repo = git_project_factory(name=name).create(version)
-        paths = [repo.workdir / "src" / name / "xyz.py" ]
+        if cwd:
+            monkeypatch.chdir(repo.workdir if cwd is True else cwd)
+
+        paths = []
+
+        # xyz module
+        paths.append(repo.workdir / "src" / name / "template.jinja2")
         paths[-1].write_text("""
-def hello():
-    pass
+# This is a file that will be jinjia2 processed during build
         """)
 
+        # pyproject
+        # in use_hatchci_from_env we use the hatch-ci from the current env
+        # (eg. pip editable installed)
         srcdir = str(Path(hatch_ci.__file__).parent.parent.parent).replace("\\", "/")
+        hatch_src = "hatch-ci" if use_hatchci_from_env else f"-e file://{srcdir}"
         paths.append(repo.workdir / "pyproject.toml")
         paths[-1].write_text(f"""
 [build-system]
@@ -34,7 +43,7 @@ requires = [
     "hatchling>=1.1.0",
     "typing-extensions",
     "jinja2",
-    "-e file://{srcdir}"
+    "{hatch_src}"
 ]
 build-backend = "hatchling.build"
 
@@ -48,56 +57,163 @@ packages = ["src/{name}"]
 [tool.hatch.version]
 source = "ci"
 version-file = "src/{name}/__init__.py"
+
+[tool.hatch.build.hooks.hatch-ci-build]
+version-file = "src/{name}/__init__.py"
     """)
         repo.commit(paths, "init")
         return repo
     return _make
 
 
-def extract(path, items):
-    result = {}
-    with zipfile.ZipFile(path) as zfp:
-        for zinfo in zfp.infolist():
-            if items and zinfo.filename not in items:
-                continue
-            with zfp.open(zinfo.filename) as fp:
-                result[zinfo.filename] = (
-                    str(fp.read(), encoding="utf-8").replace("\r", "")
-                )
-    return result
+def match_version(txt):
+    result = re.search(r"""
+__version__ = "(?P<version>\d+([.]\d+)*)(?P<tag>[a-zA-Z].*)?"
+__hash__ = "(?P<sha>[0-9abcdef]{7})"
+""".strip(), txt.strip().replace("\r", ""))
+    return result.groupdict() if result else None
+
+
+def match_build(txt):
+    result = re.search(r"""
+branch = '(?P<branch>[^']+)'
+build = 0
+current = '(?P<current>\d+([.]\d+)*)(?P<ctag>[a-zA-Z].*)?'
+ref = '(?P<ref>[^']+)'
+runid = 0
+sha = '(?P<sha>[0-9abcdef]{40})'
+version = '(?P<version>\d+([.]\d+)*)(?P<tag>[a-zA-Z].*)?'
+workflow = '(?P<workflow>[^']+)'
+    """.strip(), txt.strip().replace("\r", ""))
+    return result.groupdict() if result else None
 
 
 def test_master_branch(project):
-    repo = project("foobar", "0.0.0")
+    isolated = False # hatch-ci from the current python env if False
+    repo = project("foobar", "0.0.0", use_hatchci_from_env=not isolated)
 
-    subprocess.check_call(["python", "-m", "build",],  # noqa: S603,S607
-                          cwd=repo.workdir)
+    assert repo.status() == {}
+    build(["."] if isolated else ["-n", "."], "pytest")
 
-    path = repo.workdir / "dist" / f"{repo.name}-{repo.version()}-py3-none-any.whl"
-    assert path.exists()
+    # 1. verify we don't have leftovers
+    assert repo.status() == {"dist/": 128, }
 
-    result = extract(path, [
+    # 2. verify the sdist contains the right files
+    tarball = repo.workdir / "dist" / f"{repo.name}-{repo.version()}.tar.gz"
+
+    contents = tools.zextract(tarball)
+    assert set(contents) == {
+        "foobar-0.0.0/.gitignore",
+        "foobar-0.0.0/PKG-INFO",
+        "foobar-0.0.0/pyproject.toml",
+        "foobar-0.0.0/src/foobar/__init__.py",
+        "foobar-0.0.0/src/foobar/__init__.py.from.source",
+        "foobar-0.0.0/src/foobar/_build.py",
+        "foobar-0.0.0/src/foobar/template.jinja2",
+    }
+
+    assert match_version(contents["foobar-0.0.0/src/foobar/__init__.py"]) == {
+        "version": "0.0.0", "sha": repo.head.target.hex[:7], "tag": None,
+    }
+    assert match_build(contents["foobar-0.0.0/src/foobar/_build.py"]) == {
+        "branch": "master", "current": "0.0.0",
+        "sha":    repo.head.target.hex,
+        "version": "0.0.0", "tag": None, "workflow": "master",
+        "ref": "refs/heads/master", "ctag": None,
+    }
+
+    # 3. verify the wheel contains the right files
+    wheel = repo.workdir / "dist" / f"{repo.name}-{repo.version()}-py3-none-any.whl"
+
+    contents = tools.zextract(wheel)
+    assert set(contents) == {
+        "foobar-0.0.0.dist-info/METADATA",
+        "foobar-0.0.0.dist-info/RECORD",
+        "foobar-0.0.0.dist-info/WHEEL",
         "foobar/__init__.py",
+        "foobar/__init__.py.from.source",
         "foobar/_build.py",
-    ])
+        "foobar/template.jinja2",
+    }
 
-    match = re.search(r"""
-__version__ = "(?P<version>\d+([.]\d+)*)"
-__hash__ = "(?P<sha>[0-9abcdef]{7})"
-""".strip(), result["foobar/__init__.py"].strip())
-    assert match
-    assert match.group("version") == "0.0.0"
+    assert match_version(contents["foobar/__init__.py"]) == {
+        "version": "0.0.0", "sha": repo.head.target.hex[:7], "tag": None,
+    }
+    assert match_build(contents["foobar/_build.py"]) == {
+        "branch": "master", "current": "0.0.0",
+        "sha":    repo.head.target.hex, "version": "0.0.0", "tag": None,
+        "workflow": "master",
+        "ref": "refs/heads/master", "ctag": None,
+    }
 
-    match = re.search(r"""
-branch = '(?P<branch>[^']+)'
-build = 0
-current = '(?P<current>\d+([.]\d+)*)'
-ref = 'refs/heads/master'
-runid = 0
-sha = '(?P<sha>[0-9abcdef]{40})'
-version = '(?P<version>\d+([.]\d+)*)'
-workflow = 'master'
-""".strip(), result["foobar/_build.py"].strip())
 
-    assert match
-    assert match.group("version") == "0.0.0"
+def test_beta_branch(project):
+    isolated = False # hatch-ci from the current python env if False
+    tag = "b0" # we build with an index of 0 (the fallback)
+
+    repo = project("foobar", "0.0.0", use_hatchci_from_env=not isolated)
+    repo.branch("beta/0.0.0")
+    assert repo.branch() == "beta/0.0.0"
+
+    assert repo.status() == {}
+    build(["."] if isolated else ["-n", "."], "pytest")
+
+    # 1. verify we don't have leftovers
+    assert repo.status() == {"dist/": 128, }
+
+
+    # 2. verify the sdist contains the right files
+    tarball = repo.workdir / "dist" / f"{repo.name}-{repo.version()}{tag}.tar.gz"
+
+    contents = tools.zextract(tarball)
+    assert set(contents) == {
+        f"foobar-0.0.0{tag}/.gitignore",
+        f"foobar-0.0.0{tag}/PKG-INFO",
+        f"foobar-0.0.0{tag}/pyproject.toml",
+        f"foobar-0.0.0{tag}/src/foobar/__init__.py",
+        f"foobar-0.0.0{tag}/src/foobar/__init__.py.from.source",
+        f"foobar-0.0.0{tag}/src/foobar/_build.py",
+        f"foobar-0.0.0{tag}/src/foobar/template.jinja2",
+    }
+
+    assert match_version(contents[f"foobar-0.0.0{tag}/src/foobar/__init__.py"]) == {
+        "version": "0.0.0", "sha": repo.head.target.hex[:7], "tag": tag,
+    }
+    assert match_build(contents[f"foobar-0.0.0{tag}/src/foobar/_build.py"]) == {
+        "branch": "beta/0.0.0", "current": "0.0.0",
+        "sha":    repo.head.target.hex, "version": "0.0.0",
+        "tag": tag, "ref": "refs/heads/beta/0.0.0",
+        "workflow": "beta", "ctag": None,
+    }
+
+    # 3. verify the wheel contains the right files
+    wheel = (
+            repo.workdir / "dist" /
+            f"{repo.name}-{repo.version()}{tag}-py3-none-any.whl"
+    )
+
+    contents = tools.zextract(wheel)
+    assert set(contents) == {
+        f"foobar-0.0.0{tag}.dist-info/METADATA",
+        f"foobar-0.0.0{tag}.dist-info/RECORD",
+        f"foobar-0.0.0{tag}.dist-info/WHEEL",
+        "foobar/__init__.py",
+        "foobar/__init__.py.from.source",
+        "foobar/_build.py",
+        "foobar/template.jinja2",
+    }
+
+    assert match_version(contents["foobar/__init__.py"]) == {
+        "version": "0.0.0", "sha": repo.head.target.hex[:7], "tag": "b0",
+    }
+    assert match_build(contents["foobar/_build.py"]) == {
+        "branch": "beta/0.0.0", "current": "0.0.0", "ref": "refs/heads/beta/0.0.0",
+        "sha":    repo.head.target.hex, "version": "0.0.0",
+        "tag": "b0", "workflow": "beta",
+        "ctag": tag,
+    }
+
+
+
+
+
