@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import json
+import json  # noqa: I001
 import os
 import sys
 from pathlib import Path
