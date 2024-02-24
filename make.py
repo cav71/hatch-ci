@@ -37,7 +37,7 @@ def cleanup(workdir: Path):
 
 
 def create_sdist_env(
-    workdir: Path, builddir: Path
+    workdir: Path, builddir: Path, key: str
 ) -> tuple[list[str | None], dict[str, str]]:
     (builddir / "xyz").mkdir(parents=True, exist_ok=True)
     (builddir / "xyz-dist").mkdir(parents=True, exist_ok=True)
@@ -45,12 +45,13 @@ def create_sdist_env(
         json.dumps(
             {
                 "kwargs": {
-                    "sdist_directory": str((builddir / "xyz-dist").absolute()),
+                    key: str((builddir / "xyz-dist").absolute()),
                     "config_settings": {},
                 },
             }
         )
     )
+
     cmd = [
         Path(pyproject_hooks._in_process._in_process.__file__),
         None,
@@ -60,8 +61,10 @@ def create_sdist_env(
     return [c if c is None else str(c) for c in cmd], env
 
 
-def run_inprocess(target: str, workdir: Path, builddir: Path):
-    cmd, env = create_sdist_env(workdir, builddir)
+def run_inprocess(target: str, workdir: Path, builddir: Path, sdist: bool):
+    cmd, env = create_sdist_env(
+        workdir, builddir, key="sdist_directory" if sdist else "wheel_directory"
+    )
     assert cmd[1] is None  # noqa: S101
     cmd[1] = target
 
@@ -75,12 +78,12 @@ def run_inprocess(target: str, workdir: Path, builddir: Path):
 
 
 if __name__ == "__main__":
-    workdir = Path(__file__).parent
+    workdir = Path(os.environ.get("SOURCE_DIR", Path(__file__).parent)).absolute()
     builddir = workdir / "build"
-    os.chdir(workdir)
 
+    os.chdir(workdir)
     mode = sys.argv[1]
-    if mode in {"clean", "clean-all", "build", "sdist", "build_wheel"}:
+    if mode in {"clean", "clean-all", "build", "sdist", "wheel"}:
         cleanup(workdir)
         if mode in {"clean-all", "sdist", "build_wheel"}:
             rm(builddir / "xyz")
@@ -91,8 +94,8 @@ if __name__ == "__main__":
     if mode == "build":
         build.__main__.main(["."], "python -m build")
     elif mode == "sdist":
-        run_inprocess("build_sdist", workdir, builddir)
+        run_inprocess("build_sdist", workdir, builddir, sdist=True)
         print(f" results under -> {builddir}")  # noqa: T201
-    elif mode == "build_wheel":
-        run_inprocess("build_wheel", workdir, builddir)
+    elif mode == "wheel":
+        run_inprocess("build_wheel", workdir, builddir, sdist=False)
         print(f" results under -> {builddir}")  # noqa: T201
