@@ -20,7 +20,7 @@ class CIBuildHook(BuildHookInterface):
 
         path2 = path.parent / f"{path.name}{self.BACKUP_SUFFIX}"
         if path2.exists():
-            move(path2, path)
+            move(str(path2), str(path))
 
     def initialize(self, version, build_data):
         from . import tools
