@@ -1,236 +1,33 @@
 from __future__ import annotations
 
-import collections
-import contextlib
-import dataclasses as dc
-import os
-import shutil
-import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-from hatch_ci import scm  # F401,E402
+sys.path.insert(0, str(Path(__file__).parent))
 
+# this ficture generate a new brand python/git project
+# Eg.
+#     repo = git_project_factory().create()
+from support.projects import git_project_factory  # noqa: F401
 
-@pytest.fixture()
-def datadir(request):
-    """return the Path object to the tests datadir
+# this fixtures allows loading data from data subdir
+# Eg.
+#     resolver.lookup("foobar") ->
+#       looks un under data/foobar or data/test_name/foobar
+from support.resolver import datadir, resolver  # noqa: F401
 
-    Examples:
-        # This will print the tests/data directory
-        # (unless overridden using DATADIR env)
-        >>> def test_me(datadir):
-        >>>    print(datadir)
-    """
-    basedir = Path(__file__).parent / "data"
-    if os.getenv("DATADIR"):
-        basedir = Path(os.getenv("DATADIR"))
-    basedir = basedir / getattr(request.module, "DATADIR", "")
-    return basedir
+# this ficture adds a scripter driver:
+# Eg.
+#     script = scripter / "script-file.py"
+#     result = script.run(["--help"])
+#     assert result.out and result.err
+#     assert script.compare("some-output-dir")
+from support.scripter import scripter  # noqa: F401
 
-
-@pytest.fixture(scope="function")
-def resolver(request, datadir):
-    """return a resolver object to lookup for test data
-
-    Examples:
-        >>> def test_me(resolver):
-        >>>     print(resolver.lookup("a/b/c"))
-    """
-    @dc.dataclass
-    class Resolver:
-        root: Path
-        name: str
-
-        def lookup(self, path: Path | str) -> Path:
-            candidates = [
-                self.root / self.name / path,
-                self.root / path,
-            ]
-            for candidate in candidates:
-                if candidate.exists():
-                    return candidate
-            raise FileNotFoundError(f"cannot find {path}", candidates)
-
-    yield Resolver(
-        datadir,
-        request.module.__name__)
-
-
-@pytest.fixture()
-def scripter(request, tmp_path_factory, datadir):
-    """handles script (cli) execution
-
-    def test(scripter):
-        script = scripter / "script-file.py"
-        result = script.run(["--help"]) # this will execute:
-                                        #   script-file.py --help
-        assert result.out and result.err
-    """
-    Result = collections.namedtuple("R", "out,err,code")
-
-    class ScripterError(Exception):
-        pass
-
-    class MissingItemError(ScripterError):
-        pass
-
-    class Exe:
-        def __repr__(self):
-            return (
-                f"<{self.__class__.__name__} script={self.script} at {hex(id(self))}>"
-            )
-
-        def __init__(self, script, workdir, datadir, exe):
-            self.script = script
-            self.workdir = workdir
-            self.datadir = datadir
-            self.exe = exe
-            if not Path(script).exists():
-                raise MissingItemError(f"script file {script} not found")
-
-        def run(self, args, cwd=None, load_data=True):
-            cmd = [str(a) for a in [self.exe, self.script, *args]]
-
-            with contextlib.ExitStack() as stack:
-                fpout = stack.enter_context((self.workdir / "stdout.txt").open("w"))
-                fperr = stack.enter_context((self.workdir / "stderr.txt").open("w"))
-                self.p = subprocess.Popen(
-                    cmd,  # noqa: S603
-                    cwd=self.workdir if cwd is True else cwd,
-                    stdout=fpout,
-                    stderr=fperr,
-                )
-                self.p.communicate()
-            out = (self.workdir / "stdout.txt").read_text()
-            err = (self.workdir / "stderr.txt").read_text()
-            return Result(
-                out.replace("\r\n", "\n"), err.replace("\r\n", "\n"), self.p.returncode
-            )
-
-        def compare(self, refdir, populate=False):
-            src = self.datadir / refdir
-            if not src.exists():
-                raise MissingItemError(f"reference dir {src} not found")
-
-            for name in ["stdout.txt", "stderr.txt"]:
-                left = src / name
-                right = self.workdir / name
-                if populate:
-                    if left.exists():
-                        raise ScripterError(f"cannot overwrite {left} with {right}")
-                    shutil.copyfile(right, left)
-                assert left.read_text() == right.read_text()
-
-    class Scripter:
-        def __init__(self, srcdir, datadir, exe=sys.executable):
-            self.srcdir = srcdir
-            self.datadir = datadir
-            self.exe = exe
-
-        def __truediv__(self, path):
-            tmpdir = tmp_path_factory.mktemp(Path(path).with_suffix("").name)
-            return Exe(self.srcdir / path, tmpdir, self.datadir, self.exe)
-
-    return Scripter(Path(request.module.__file__).parent, datadir)
-
-
-@pytest.fixture(scope="function")
-def git_project_factory(request, tmp_path):
-    """fixture to generate git working repositories
-
-    def test(git_project_factory):
-        # simple git repo (only 1 .keep file)
-        repo = git_project_factory().create()
-
-        # git repo with a "version" src/__init__.py file
-        repo1 = git_project_factory().create("0.0.0")
-
-        # clone from repo
-        repo2 = git_project_factory().create(clone=repo)
-
-        assert repo.workdir != repo1.workdir
-        assert repo.workdir != repo1.workdir
-
-    """
-
-    class GitRepoBase(scm.GitRepo):
-        def init(self, force: bool = False, nobranch: bool = False) -> GitRepoBase:
-            from shutil import rmtree
-
-            if force:
-                rmtree(self.workdir, ignore_errors=True)
-            self.workdir.mkdir(parents=True, exist_ok=True if force else False)
-
-            if not nobranch:
-                self(["init", "-b", "master"])
-            else:
-                self(
-                    [
-                        "init",
-                    ]
-                )
-
-            self(["config", "user.name", "First Last"])
-            self(["config", "user.email", "user@email"])
-
-            if not nobranch:
-                self(["commit", "-m", "initial", "--allow-empty"])
-            return self
-
-    class Project(GitRepoBase):
-        def __init__(self, name="", *args, **kwargs):
-            super().__init__(*args, **kwargs)
-            self.name = name
-
-        @property
-        def initfile(self):
-            return self.workdir / "src" / (self.name or "") / "__init__.py"
-
-        def version(self, value=None):
-            if value is not None:
-                initial = not self.initfile.exists()
-                self.initfile.parent.mkdir(parents=True, exist_ok=True)
-                self.initfile.write_text(f'__version__ = "{value}"\n')
-                self.commit(
-                    [self.initfile], "initial commit" if initial else "update version"
-                )
-
-            if not self.initfile.exists():
-                return None
-
-            lines = [
-                line.partition("=")[2].strip().strip("'").strip('"')
-                for line in self.initfile.read_text().split("\n")
-                if line.strip().startswith("__version__")
-            ]
-            return lines[0] if lines else None
-
-        def create(self, version=None,
-                   clone=None,
-                   subdir=None,
-                   force=False, nobranch=False):
-            if clone:
-                clone.clone(self.workdir, force=force)
-            else:
-                self.init(force=force, nobranch=nobranch)
-            self.version(version)
-            return self
-
-    def id_generator(size=6):
-        from random import choice
-        from string import ascii_uppercase, digits
-
-        return "".join(
-            choice(ascii_uppercase + digits) for _ in range(size)  # noqa: S311
-        )
-
-    return lambda subdir="", name="": Project(name,
-                                              tmp_path / (subdir or id_generator()))
-    # or request.node.name
+from hatch_ci import scm  # noqa: F401
 
 
 @pytest.fixture(scope="function")

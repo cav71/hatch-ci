@@ -1,3 +1,7 @@
+def test_resolver(resolver):
+    assert resolver.lookup("foobar-0.0.0.tar.gz").exists()
+
+
 def test_operation_create(git_project_factory):
     # simple git repo (only 1 .keep file and 1 .git dir)
     repo0 = git_project_factory().create()
