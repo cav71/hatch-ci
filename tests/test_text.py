@@ -17,7 +17,7 @@ def test_indent():
     )
 
 
-def test_indent_anoter():
+def test_indent_another():
     txt = """
     This is a simply
        indented text
