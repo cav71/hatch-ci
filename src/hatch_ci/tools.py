@@ -2,14 +2,17 @@
 # copy of setuptools_github.tools
 from __future__ import annotations
 
-import ast
+import argparse
+import functools
 import json
 import logging
 import re
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
-from . import scm
+import jinja2
+
+from . import code, common, fileos, scm, text
 
 log = logging.getLogger(__name__)
 
@@ -34,66 +37,12 @@ class _NO:
     pass
 
 
-class AbortExecutionError(Exception):
-    @staticmethod
-    def _strip(txt):
-        txt = txt or ""
-        txt = txt[1:] if txt.startswith("\n") else txt
-        txt = indent(txt, pre="")
-        return txt[:-1] if txt.endswith("\n") else txt
-
-    def __init__(
-        self, message: str, explain: str | None = None, hint: str | None = None
-    ):
-        self.message = message.strip()
-        self._explain = explain
-        self._hint = hint
-
-    @property
-    def explain(self):
-        return self._strip(self._explain)
-
-    @property
-    def hint(self):
-        return self._strip(self._hint)
-
-    def __str__(self):
-        result = [self.message]
-        if self.explain:
-            result.append(indent("\n" + self.explain, pre=" " * 2)[2:])
-        if self.hint:
-            result.extend(["\nhint:", indent("\n" + self.hint, pre=" " * 2)[2:]])
-        return "".join(result)
-
-
-def urmtree(path: Path):
-    "universal (win|*nix) rmtree"
-    from os import name
-    from shutil import rmtree
-    from stat import S_IWUSR
-
-    if name == "nt":
-        for p in path.rglob("*"):
-            p.chmod(S_IWUSR)
-    rmtree(path, ignore_errors=True)
-    if path.exists():
-        raise RuntimeError(f"cannot remove {path=}")
-
-
-def indent(txt: str, pre: str = " " * 2) -> str:
-    "simple text indentation"
-
-    from textwrap import dedent
-
-    txt = dedent(txt)
-    if txt.endswith("\n"):
-        last_eol = "\n"
-        txt = txt[:-1]
-    else:
-        last_eol = ""
-
-    result = pre + txt.replace("\n", "\n" + pre) + last_eol
-    return result if result.strip() else result.strip()
+class _Context(argparse.Namespace):
+    def items(self):
+        for name, value in self.__dict__.items():
+            if name.startswith("_"):
+                continue
+            yield (name, value)
 
 
 def list_of_paths(paths: str | Path | list[str | Path] | None) -> list[Path]:
@@ -102,171 +51,36 @@ def list_of_paths(paths: str | Path | list[str | Path] | None) -> list[Path]:
     return [Path(s) for s in ([paths] if isinstance(paths, (str, Path)) else paths)]
 
 
-def lstrip(txt: str, ending: str | list[str]) -> str:
-    endings = ending if isinstance(ending, list) else [ending]
-    for left in endings:
-        txt = txt[len(left) :] if txt.startswith(left) else txt
-    return txt
+backup = functools.partial(fileos.backup, ext=common.BACKUP_SUFFIX)
+unbackup = functools.partial(fileos.unbackup, ext=common.BACKUP_SUFFIX)
 
 
-def loadmod(path: Path) -> Any:
-    from importlib.util import module_from_spec, spec_from_file_location
+def get_option(
+    config: dict[str, str], var: str, typ: Any = _NO, fallback: Any = _NO
+) -> Any:
+    """extract an option value from the hatch config dict
 
-    module = None
-    spec = spec_from_file_location(Path(path).name, Path(path))
-    if spec:
-        module = module_from_spec(spec)
-    if module and spec and spec.loader:
-        spec.loader.exec_module(module)
-    return module
-
-
-def zextract(path: Path | str, items: list[str] | None = None) -> dict[str, Any]:
-    from tarfile import TarFile, is_tarfile
-    from zipfile import ZipFile, is_zipfile
-
-    path = Path(path)
-    result = {}
-    if is_tarfile(path):
-        with TarFile.open(path) as tfp:
-            for member in tfp.getmembers():
-                fp = tfp.extractfile(member)
-                if not fp:
-                    continue
-                result[member.name] = str(fp.read(), encoding="utf-8")
-    elif is_zipfile(path):
-        with ZipFile(path) as tfp:
-            for zinfo in tfp.infolist():
-                if items and zinfo.filename not in items:
-                    continue
-                with tfp.open(zinfo.filename) as fp:
-                    result[zinfo.filename] = str(fp.read(), encoding="utf-8").replace(
-                        "\r", ""
-                    )
-
-    return result
+    Eg.
+        get_options(self.config, "key")
+    """
+    value = config.get(var, fallback)
+    if value is _NO:
+        raise ValidationError(f"cannot find variable '{var}' for plugin 'ci'")
+    try:
+        new_value = typ(value) if typ is not _NO else value
+    except Exception as exc:
+        raise ValidationError(f"cannot convert to {typ=} the {value=}") from exc
+    return new_value
 
 
-def apply_fixers(txt: str, fixers: dict[str, str] | None = None) -> str:
+def replace(txt: str, replacements: dict[str, str] | None = None) -> str:
     result = txt
-    for src, dst in (fixers or {}).items():
+    for src, dst in (replacements or {}).items():
         if src.startswith("re:"):
             result = re.sub(src[3:], dst, result)
         else:
             result = result.replace(src, dst)
     return result
-
-
-def get_module_var(
-    path: Path | str, var: str = "__version__", abort=True
-) -> str | None:
-    """extract from a python module in path the module level <var> variable
-
-    Args:
-        path (str,Path): python module file to parse using ast (no code-execution)
-        var (str): module level variable name to extract
-        abort (bool): raise MissingVariable if var is not present
-
-    Returns:
-        None or str: the variable value if found or None
-
-    Raises:
-        MissingVariable: if the var is not found and abort is True
-
-    Notes:
-        this uses ast to parse path, so it doesn't load the module
-    """
-
-    class V(ast.NodeVisitor):
-        def __init__(self, keys):
-            self.keys = keys
-            self.result = {}
-
-        def visit_Module(self, node):  # noqa: N802
-            # we extract the module level variables
-            for subnode in ast.iter_child_nodes(node):
-                if not isinstance(subnode, ast.Assign):
-                    continue
-                for target in subnode.targets:
-                    if target.id not in self.keys:
-                        continue
-                    if not isinstance(subnode.value, (ast.Num, ast.Str, ast.Constant)):
-                        raise ValidationError(
-                            f"cannot extract non Constant variable "
-                            f"{target.id} ({type(subnode.value)})"
-                        )
-                    if isinstance(subnode.value, ast.Str):
-                        value = subnode.value.s
-                    elif isinstance(subnode.value, ast.Num):
-                        value = subnode.value.n
-                    else:
-                        value = subnode.value.value
-                    if target.id in self.result:
-                        raise ValidationError(
-                            f"found multiple repeated variables {target.id}"
-                        )
-                    self.result[target.id] = value
-            return self.generic_visit(node)
-
-    v = V({var})
-    path = Path(path)
-    if path.exists():
-        tree = ast.parse(Path(path).read_text())
-        v.visit(tree)
-    if var not in v.result and abort:
-        raise MissingVariableError(f"cannot find {var} in {path}", path, var)
-    return v.result.get(var, None)
-
-
-def set_module_var(
-    path: str | Path, var: str, value: Any, create: bool = True
-) -> tuple[Any, str]:
-    """replace var in path with value
-
-    Args:
-        path (str,Path): python module file to parse
-        var (str): module level variable name to extract
-        value (None or Any): if not None replace var in version_file
-        create (bool): create path if not present
-
-    Returns:
-        (str, str) the (<previous-var-value|None>, <the new text>)
-    """
-
-    # validate the var
-    get_module_var(path, var, abort=False)
-
-    # module level var
-    expr = re.compile(f"^{var}\\s*=\\s*['\\\"](?P<value>[^\\\"']*)['\\\"]")
-    fixed = None
-    lines = []
-
-    src = Path(path)
-    if not src.exists() and create:
-        src.parent.mkdir(parents=True, exist_ok=True)
-        src.touch()
-
-    input_lines = src.read_text().split("\n")
-    for line in input_lines:
-        if fixed is not None:
-            lines.append(line)
-            continue
-        match = expr.search(line)
-        if match:
-            fixed = match.group("value")
-            if value is not None:
-                x, y = match.span(1)
-                line = line[:x] + value + line[y:]
-        lines.append(line)
-    txt = "\n".join(lines)
-    if (fixed is None) and create:
-        if txt and txt[-1] != "\n":
-            txt += "\n"
-        txt += f'{var} = "{value}"'
-
-    with Path(path).open("w") as fp:
-        fp.write(txt)
-    return fixed, txt
 
 
 def bump_version(version: str, mode: str) -> str:
@@ -297,7 +111,7 @@ def bump_version(version: str, mode: str) -> str:
     return ".".join(str(v) for v in newver)
 
 
-def validate_gdata(
+def _validate_gdata(
     gdata: dict[str, Any], abort: bool = True
 ) -> tuple[set[str], set[str]]:
     keys = {
@@ -320,7 +134,7 @@ def get_data(
     github_dump: str | None = None,
     record_path: Path | None = None,
     abort: bool = True,
-) -> tuple[dict[str, str | None], dict[str, Any]]:
+) -> dict[str, str | None]:
     """extracts version information from github_dump and updates version_file in-place
 
     This gather version, branch, commit and other info from:
@@ -363,8 +177,8 @@ def get_data(
     # we fill this structure getting data from these sources:
     #  github_dump -> record_path (eg. _build.py) -> repo infos (eg. the git checkout)
     data = {
-        "version": get_module_var(version_file, "__version__"),
-        "current": get_module_var(version_file, "__version__"),
+        "version": code.get_module_var(version_file, "__version__"),
+        "current": code.get_module_var(version_file, "__version__"),
         "ref": None,
         "branch": None,
         "sha": None,
@@ -383,13 +197,13 @@ def get_data(
                 f"cannot figure out settings (no repo in {path}, "
                 f"a GITHUB_DUMP or a _build.py file)"
             )
-        return data, {}
+        return data
 
     dirty = False
     if github_dump:
         gdata = json.loads(github_dump) if isinstance(github_dump, str) else github_dump
     elif record_path and record_path.exists():
-        mod = loadmod(record_path)
+        mod = fileos.loadmod(record_path)
         gdata = {
             "ref": mod.ref,
             "sha": mod.sha,
@@ -410,7 +224,7 @@ def get_data(
         )
 
     # make sure we have all keys
-    validate_gdata(gdata)
+    _validate_gdata(gdata)
 
     expr = re.compile(r"/(?P<what>beta|release)/(?P<version>\d+([.]\d+)*)$")
     expr1 = re.compile(r"(?P<version>\d+([.]\d+)*)(?P<num>b\d+)?$")
@@ -421,7 +235,7 @@ def get_data(
     data["build"] = gdata["run_number"]  # unless in GITHUB_DUMP these are likely None
     data["runid"] = gdata["run_id"]  # unless in GITHUB_DUMP these are likely None
 
-    data["branch"] = lstrip(gdata["ref"], ["refs/heads/", "refs/tags/"])
+    data["branch"] = text.lstrip(gdata["ref"], ["refs/heads/", "refs/tags/"])
     data["workflow"] = data["branch"]
 
     current = data["current"]
@@ -441,7 +255,9 @@ def get_data(
             data["workflow"] = "beta"
         else:
             data["workflow"] = "tags"
-    return data, gdata
+
+    assert len(data) == 8, "cannot change the data structure shape"  # noqa: S101
+    return data
 
 
 def update_version(
@@ -457,101 +273,113 @@ def update_version(
         str: the new version for the package
     """
 
-    data = get_data(version_file, github_dump, abort=abort)[0]
-    set_module_var(version_file, "__version__", data["version"])
-    set_module_var(version_file, "__hash__", (data["sha"] or "")[:7])
+    data = get_data(version_file, github_dump, abort=abort)
+    code.set_module_var(version_file, "__version__", data["version"])
+    code.set_module_var(version_file, "__hash__", (data["sha"] or "")[:7])
     return data["version"]
 
 
-def generate_build_record(
-    record_path: Path, data: dict[str, Any], exist_ok: bool = False
-) -> None:
+def get_environment(
+    version_file: str | Path,
+    github_dump: str | None = None,
+    record_path: Path | None = None,
+    abort: bool = True,
+) -> jinja2.Environment:
+    """returns a context object"""
+
+    from urllib.parse import quote
+
+    env = jinja2.Environment(autoescape=True)
+    env.filters["urlquote"] = functools.partial(quote, safe="")
+    env.globals = {
+        "dir": dir,
+        "len": len,
+        "sorted": sorted,
+        "reversed": reversed,
+    }
+    data = get_data(version_file, github_dump, record_path, abort)
+    env.globals["ctx"] = _Context(**data)
+    return env
+
+
+def generate_build_record(record_path: Path, data: dict[str, Any]) -> Path:
     record_path.parent.mkdir(parents=True, exist_ok=True)
     with record_path.open("w") as fp:
         print("# autogenerate build file", file=fp)
         for key, value in sorted((data or {}).items()):
             value = f"'{value}'" if isinstance(value, str) else value
             print(f"{key} = {value}", file=fp)
+    return record_path
 
 
-def get_option(
-    config: dict[str, str], var: str, typ: Any = _NO, fallback: Any = _NO
-) -> Any:
-    value = config.get(var, fallback)
-    if value is _NO:
-        raise ValidationError(f"cannot find variable '{var}' for plugin 'ci'")
-    try:
-        new_value = typ(value) if typ is not _NO else value
-    except Exception as exc:
-        raise ValidationError(f"cannot convert to {typ=} the {value=}") from exc
-    return new_value
-
-
-def process(
-    version_file: str | Path,
-    github_dump: str | None = None,
-    record: str | Path = "_build.py",
-    paths: str | Path | list[str | Path] | None = None,
-    fixers: dict[str, str] | None = None,
-    backup: Callable[[Path | str], None] | None = None,
-    abort: bool = True,
-) -> dict[str, str | None]:
-    """get version from github_dump and updates version_file/paths
-
-    Args:
-        version_file (str, Path): path to a file with __version__ variable
-        github_dump (str): the os.getenv("GITHUB_DUMP") value
-        paths (str, Path): path(s) to files jinja2 processeable
-        fixers (dict[str,str]): fixer dictionary
-        record: set to True will generate a _build.py sibling of version_file
-
-    Returns:
-        str: the new version for the package
-
-    Example:
-        {'branch': 'beta/0.3.1',
-         'build': 0,
-         'current': '0.3.1',
-         'hash': 'c9e484a*',
-         'version': '0.3.1b0',
-         'runid': 0
-        }
-    """
-    from argparse import Namespace
-    from functools import partial
-    from urllib.parse import quote
-
-    from jinja2 import Environment
-
-    class Context(Namespace):
-        def items(self):
-            for name, value in self.__dict__.items():
-                if name.startswith("_"):
-                    continue
-                yield (name, value)
-
-    record_path = (Path(version_file).parent / record).absolute() if record else None
-    data, _ = get_data(version_file, github_dump, record_path, abort)
-
-    if not backup:
-
-        def backup(_: Path | str) -> None:
-            pass
-
-    backup(version_file)
-
-    set_module_var(version_file, "__version__", data["version"])
-    set_module_var(version_file, "__hash__", (data["sha"] or "")[:7])
-
-    env = Environment(autoescape=True)
-    env.filters["urlquote"] = partial(quote, safe="")
-    for path in list_of_paths(paths):
-        txt = apply_fixers(path.read_text(), fixers)
-        tmpl = env.from_string(txt)
-        backup(path)
-        path.write_text(tmpl.render(ctx=Context(**data)))
-
-    if record_path:
-        generate_build_record(record_path, data)
-
-    return data
+# def process(
+#     version_file: str | Path,
+#     github_dump: str | None = None,
+#     record: str | Path = "_build.py",
+#     paths: str | Path | list[str | Path] | None = None,
+#     fixers: dict[str, str] | None = None,
+#     backup: Callable[[Path | str], None] | None = None,
+#     abort: bool = True,
+# ) -> dict[str, str | None]:
+#     """get version from github_dump and updates version_file/paths
+#
+#     Args:
+#         version_file (str, Path): path to a file with __version__ variable
+#         github_dump (str): the os.getenv("GITHUB_DUMP") value
+#         paths (str, Path): path(s) to files jinja2 processeable
+#         fixers (dict[str,str]): fixer dictionary
+#         record: set to True will generate a _build.py sibling of version_file
+#
+#     Returns:
+#         str: the new version for the package
+#
+#     Example:
+#         {'branch': 'beta/0.3.1',
+#          'build': 0,
+#          'current': '0.3.1',
+#          'hash': 'c9e484a*',
+#          'version': '0.3.1b0',
+#          'runid': 0
+#         }
+#     """
+#     from argparse import Namespace
+#     from functools import partial
+#     from urllib.parse import quote
+#
+#     from jinja2 import Environment
+#
+#     class Context(Namespace):
+#         def items(self):
+#             for name, value in self.__dict__.items():
+#                 if name.startswith("_"):
+#                     continue
+#                 yield (name, value)
+#
+#     record_path = (Path(version_file).parent / record).absolute() if record else None
+#     data = get_data(version_file, github_dump, record_path, abort)
+#
+#     if not backup:
+#
+#         def backup(_: Path | str) -> None:
+#             pass
+#
+#     breakpoint()
+#     # backup(version_file)
+#
+#     # set_module_var(version_file, "__version__", data["version"])
+#     # set_module_var(version_file, "__hash__", (data["sha"] or "")[:7])
+#
+#     # env = Environment(autoescape=True)
+#     # env.filters["urlquote"] = partial(quote, safe="")
+#     # for path in list_of_paths(paths):
+#     #     txt = replace(path.read_text(), fixers)
+#     #     tmpl = env.from_string(txt)
+#     #     backup(path)
+#     #     path.write_text(tmpl.render(ctx=Context(**data)))
+#     #
+#     # if record_path:
+#     #     generate_build_record(record_path, data)
+#
+#     return data
+#
+#
