@@ -14,27 +14,21 @@
 
 ## Introduction
 This is a [hatch-vcs](https://github.com/ofek/hatch-vcs) heavily inspired plugin: it captures values from
-the build environment (eg. github) and it uses to modify source files during 
-the wheel build phase.
+the build environment (eg. github, pyproject.toml etc.) and it uses these 
+to process files during the build/packaging process. 
 
-This is a typical project (let's call it foobar):
+In a typical project (let's call it foobar):
 
 ```
 └── foobar-project
     ├── pyproject.toml
     └── src
         └── foobar
-            └── __init__.py (this contains __version__ and 
-                             __hash__ variables that will be 
-                             updated during the build)
+            └── __init__.py <- __version__ and __hash__ are update during build
 ```
 
-Issuing the:
-``
-python -m build .
-``
+With the pyproject.toml set like:
 
-In the simplest way all you have to do is setting up the pyproject.toml as:
 ```text
 [build-system]
 requires = ["hatchling", "hatch-ci"]
@@ -43,9 +37,27 @@ build-backend = "hatchling.build"
 [project]
 dynamic = ["version"]
 
+# the version-file needs to be repeated twice here
 [tool.hatch.version]
 version-file = "src/package/__init__.py"
+
+[tool.hatch.build.hooks.ci]
+version-file = "src/{name}/__init__.py"
+
+# performs these string replacements
+process-replace = [
+    ["re:(replace-me)", "[\\\\1]"],
+    ["string-to-replace", "replacement-string"]
+]
+
+# before jinja process these
+process-paths = [
+    "src/project/template.jinja2"
+]
 ```
+
+Building the sdist/wheel package will have the `__version__` and `__hash__` set 
+depending on the branch and current commit.
 
 ### wheel version
 During the wheel build the version is dynamically updated with information taken from
