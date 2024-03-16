@@ -94,3 +94,23 @@ __version__ = "9.10.11"
     )
 
 
+def test_set_module_var_empty_file(tmp_path):
+    "check set_module_var creates a new file if not present"
+    path = tmp_path / "in1.txt"
+
+    assert not path.exists()
+    code.set_module_var(path, "__version__", "1.2.3")
+
+    assert path.exists()
+    path.write_text("# a fist comment line\n" + path.read_text().strip())
+
+    code.set_module_var(path, "__hash__", "4.5.6")
+    assert (
+        path.read_text().strip()
+        == """
+# a fist comment line
+__version__ = "1.2.3"
+__hash__ = "4.5.6"
+""".strip()
+    )
+
