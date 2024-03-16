@@ -1,4 +1,6 @@
 """adds a datadir and resolver fixtures"""
+from __future__ import annotations
+
 import dataclasses as dc
 import os
 from pathlib import Path
