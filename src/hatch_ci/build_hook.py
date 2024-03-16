@@ -3,50 +3,51 @@ from pathlib import Path
 
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 
+from . import common
+
 
 class CIBuildHook(BuildHookInterface):
-    PLUGIN_NAME = "hatch-ci-build"
-    BACKUP_SUFFIX = ".from.source"
-
-    def _backup(self, path: Path) -> None:
-        from shutil import copyfile, copymode
-
-        path2 = path.parent / f"{path.name}{self.BACKUP_SUFFIX}"
-        copyfile(path, path2)
-        copymode(path, path2)
-
-    def _un_backup(self, path: Path) -> None:
-        from shutil import move
-
-        path2 = path.parent / f"{path.name}{self.BACKUP_SUFFIX}"
-        if path2.exists():
-            move(str(path2), str(path))
+    PLUGIN_NAME = common.PLUGIN_NAME
 
     def initialize(self, version, build_data):
-        from . import tools
-        from .common import RECORD_NAME
+        from . import code, tools
 
         version_file = Path(self.root) / tools.get_option(self.config, "version-file")
-        record_path = (Path(version_file).parent / RECORD_NAME).absolute()
+        record_path = (Path(version_file).parent / common.RECORD_NAME).absolute()
+        env = tools.get_environment(version_file, os.getenv("GITHUB_DUMP"), record_path)
 
-        data, _ = tools.get_data(version_file, os.getenv("GITHUB_DUMP"), record_path)
+        tools.generate_build_record(record_path, env.globals["ctx"])
 
-        tools.process(
-            version_file,
-            os.getenv("GITHUB_DUMP"),
-            record_path,
-            None,
-            None,
-            backup=self._backup,
+        tools.backup(version_file, abort=False)
+        code.set_module_var(version_file, "__version__", env.globals["ctx"].version)
+        code.set_module_var(
+            version_file, "__hash__", (env.globals["ctx"].sha or "")[:7]
         )
+
+        paths = [
+            Path(self.root) / path
+            for path in tools.get_option(self.config, "process-paths", fallback=[])
+        ]
+        replacements = tools.get_option(
+            self.config, "process-replace", fallback=[], typ=dict
+        )
+        for path in paths:
+            txt = tools.replace(path.read_text(), replacements)
+            out = env.from_string(txt).render()
+            tools.backup(path, abort=False)
+            path.write_text(out)
 
     def finalize(self, version, build_data, artifact_path):
         from . import tools
-        from .common import RECORD_NAME
 
         version_file = Path(self.root) / tools.get_option(self.config, "version-file")
+        record_path = (Path(version_file).parent / common.RECORD_NAME).absolute()
 
-        self._un_backup(version_file)
-
-        record_path = (Path(version_file).parent / RECORD_NAME).absolute()
+        paths = [
+            Path(self.root) / path
+            for path in tools.get_option(self.config, "process-paths", fallback=[])
+        ]
+        for path in paths:
+            tools.unbackup(path)
+        tools.unbackup(version_file, abort=False)
         record_path.unlink()
