@@ -6,12 +6,11 @@ import logging
 import sys
 from typing import Any, Callable, Protocol
 
-from . import tools
+from . import text
 
 
 class ErrorFn(Protocol):
-    def __call__(self, message: str, explain: str | None, hint: str | None) -> None:
-        ...
+    def __call__(self, message: str, explain: str | None, hint: str | None) -> None: ...
 
 
 class AbortExecutionError(Exception):
@@ -19,7 +18,7 @@ class AbortExecutionError(Exception):
     def _strip(txt):
         txt = txt or ""
         txt = txt[1:] if txt.startswith("\n") else txt
-        txt = tools.indent(txt, pre="")
+        txt = text.indent(txt, pre="")
         return txt[:-1] if txt.endswith("\n") else txt
 
     def __init__(
@@ -42,10 +41,10 @@ class AbortExecutionError(Exception):
             out.extend(self._strip(self.message).split("\n"))
         if self.explain:
             out.append("reason:")
-            out.extend(tools.indent(self.explain).split("\n"))
+            out.extend(text.indent(self.explain).split("\n"))
         if self.hint:
             out.append("hint:")
-            out.extend(tools.indent(self.hint).split("\n"))
+            out.extend(text.indent(self.hint).split("\n"))
         return "\n".join((line.strip() if not line.strip() else line) for line in out)
 
 
@@ -66,9 +65,11 @@ def _process_options(
     options: argparse.Namespace, errorfn: ErrorFn
 ) -> argparse.Namespace | None:
     logging.basicConfig(
-        format="%(levelname)s:%(name)s:(dry-run) %(message)s"
-        if options.dryrun
-        else "%(levelname)s:%(name)s:%(message)s",
+        format=(
+            "%(levelname)s:%(name)s:(dry-run) %(message)s"
+            if options.dryrun
+            else "%(levelname)s:%(name)s:%(message)s"
+        ),
         level=logging.DEBUG if options.verbose else logging.INFO,
     )
 
@@ -81,8 +82,9 @@ def _process_options(
 
 def cli(
     add_arguments: Callable[[argparse.ArgumentParser], None] | None = None,
-    process_options: Callable[[argparse.Namespace, ErrorFn], argparse.Namespace | None]
-    | None = None,
+    process_options: (
+        Callable[[argparse.Namespace, ErrorFn], argparse.Namespace | None] | None
+    ) = None,
     doc: str | None = None,
 ):
     @functools.wraps(cli)
