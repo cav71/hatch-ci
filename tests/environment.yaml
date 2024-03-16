@@ -1,5 +1,7 @@
+build
 click
 coverage
+hatch
 jinja2
 lxml
 mock
@@ -11,6 +13,7 @@ pytest
 pytest-cov
 pytest-html
 pytest-subtests
+pytest-xdist
 ruff
 typing_extensions
 
