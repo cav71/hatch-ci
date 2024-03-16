@@ -9,6 +9,7 @@ Or will release the beta branch and will move inot the next minor
     hatch-ci {major|minor|micro} ./src/package_name/__init__.py
 
 """
+
 from __future__ import annotations
 
 import argparse
@@ -17,7 +18,7 @@ import re
 import sys
 from pathlib import Path
 
-from . import cli, scm, tools
+from . import cli, code, scm, text, tools
 
 log = logging.getLogger(__name__)
 
@@ -80,7 +81,7 @@ def main(options) -> None:
     if not options.initfile.exists():
         options.error(f"cannot find version file {options.initfile}")
 
-    version = tools.get_module_var(options.initfile, "__version__")
+    version = code.get_module_var(options.initfile, "__version__")
     log.info("got version %s for branch '%s'", version, options.repo.head.shorthand)
     if not version:
         raise tools.InvalidVersionError(f"cannot find a version in {options.initfile}")
@@ -102,7 +103,7 @@ def main(options) -> None:
         options.repo.branch(f"beta/{version}", master)
         options.repo(["checkout", current])
         print(  # noqa: T201
-            tools.indent(
+            text.indent(
                 f"""
         The release branch beta/{version} has been created.
 
@@ -141,7 +142,7 @@ def main(options) -> None:
 
         # bump version
         new_version = tools.bump_version(version, options.mode)
-        tools.set_module_var(options.initfile, "__version__", new_version)
+        code.set_module_var(options.initfile, "__version__", new_version)
 
         # commit
         options.repo.commit(
@@ -149,7 +150,7 @@ def main(options) -> None:
         )
 
         print(  # noqa: T201
-            tools.indent(
+            text.indent(
                 f"""
         The release is almost complete.
 
