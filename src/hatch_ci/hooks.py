@@ -1,7 +1,7 @@
 from hatchling.plugin import hookimpl
 
-from hatch_ci.build_hook import CIBuildHook
-from hatch_ci.version_hook import CIVersionSource
+from hatch_ci.hook_build import CIBuildHook
+from hatch_ci.hook_version import CIVersionSource
 
 
 @hookimpl

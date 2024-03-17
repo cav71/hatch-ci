@@ -51,3 +51,18 @@ class CIBuildHook(BuildHookInterface):
             tools.unbackup(path)
         tools.unbackup(version_file, abort=False)
         record_path.unlink()
+
+
+if __name__ == "__main__":
+    import toml  # type: ignore
+
+    from . import tools
+
+    cfg = toml.loads(Path("pyproject.toml").read_text())
+    replacements = dict(cfg["tool"]["hatch"]["build"]["hooks"]["ci"]["process-replace"])
+    env = tools.get_environment(Path("src/hatch_ci/__init__.py"))
+
+    path = Path("README.md")
+    txt = tools.replace(path.read_text(), replacements)
+    out = env.from_string(txt).render()
+    Path("out.txt").write_text(out)
