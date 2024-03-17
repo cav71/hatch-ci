@@ -240,7 +240,8 @@ def package(repo):
     wheel = next((repo.workdir / "dist").glob("*.whl"))
     out = zextract(wheel)
     print("== CHECKS! ==")  # noqa: T201
-    for line in out["hatch_ci-0.1.4.dist-info/METADATA"].split("\n"):
+    content = out[next(key for key in out if "METADATA" in key)]
+    for line in content.split("\n"):
         if "[Build]" in line or "[codecov]" in line:
             print(f"| {line}")  # noqa: T201
 
