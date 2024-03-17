@@ -6,7 +6,6 @@ on:
       - 'beta/**'
 env:
   PACKAGE: hatch_ci
-  XTARGETS: ["3.8", "3.9", "3.10", "3.11", "3.12"]
   XTARGET: "3.12"
 
 jobs:
@@ -14,7 +13,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ${{ env.XTARGETS }}
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -95,7 +94,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ${{ env.XTARGETS }}
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
     runs-on: ${{ matrix.os }}
     environment:
         name: pypi
