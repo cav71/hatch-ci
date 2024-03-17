@@ -70,6 +70,33 @@ def run(cmd: Any, tee: Any = True, **kwargs):
     raise RuntimeError("\n".join(msg))
 
 
+def zextract(path: Path | str, items: list[str] | None = None) -> dict[str, Any]:
+    """extracts from path (a zipfile/tarball) all data in a dictionary"""
+    from tarfile import TarFile, is_tarfile
+    from zipfile import ZipFile, is_zipfile
+
+    path = Path(path)
+    result = {}
+    if is_tarfile(path):
+        with TarFile.open(path) as tfp:
+            for member in tfp.getmembers():
+                fp = tfp.extractfile(member)
+                if not fp:
+                    continue
+                result[member.name] = str(fp.read(), encoding="utf-8")
+    elif is_zipfile(path):
+        with ZipFile(path) as tfp:
+            for zinfo in tfp.infolist():
+                if items and zinfo.filename not in items:
+                    continue
+                with tfp.open(zinfo.filename) as fp:
+                    result[zinfo.filename] = str(fp.read(), encoding="utf-8").replace(
+                        "\r", ""
+                    )
+
+    return result
+
+
 class Repo:
     def __init__(self, workdir):
         from toml import loads  # type: ignore
@@ -210,6 +237,12 @@ def package(repo):
     """create package for deployment"""
     install(repo)
     run(["python", "-m", "build", "-n", "."])
+    wheel = next((repo.workdir / "dist").glob("*.whl"))
+    out = zextract(wheel)
+    print("== CHECKS! ==")  # noqa: T201
+    for line in out["hatch_ci-0.1.4.dist-info/METADATA"].split("\n"):
+        if "[Build]" in line or "[codecov]" in line:
+            print(f"| {line}")  # noqa: T201
 
 
 def uninstall(repo):
