@@ -40,6 +40,7 @@ jobs:
             pip install setuptools build wheel twine
             pip install -r tests/requirements.txt
             python make.py install
+            pip list
 
       - name: Lint checks (ruff)
         shell: bash
