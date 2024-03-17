@@ -15,4 +15,5 @@ pytest-html
 pytest-subtests
 pytest-xdist
 ruff
+types-toml
 typing_extensions

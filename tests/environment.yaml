@@ -6,7 +6,6 @@ jinja2
 lxml
 mock
 mypy
-types-mypy-extensions
 pre-commit
 pyfakefs
 pytest
@@ -15,5 +14,7 @@ pytest-html
 pytest-subtests
 pytest-xdist
 ruff
+types-mypy-extensions
+types-toml
 typing_extensions
 
