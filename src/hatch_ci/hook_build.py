@@ -54,7 +54,7 @@ class CIBuildHook(BuildHookInterface):
 
 
 if __name__ == "__main__":
-    import toml  # type: ignore
+    import toml
 
     from . import tools
 
