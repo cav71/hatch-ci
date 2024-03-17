@@ -23,7 +23,7 @@ def project(git_project_factory, monkeypatch):
             └── xyz.py
     """
 
-    def _make(name, version, cwd=True, use_hatch_in_src=False):
+    def _make(name, version, cwd=True, use_hatch_ci_from_current_env=False):
         repo = git_project_factory(name=name).create(version)
         if cwd:
             monkeypatch.chdir(repo.workdir if cwd is True else cwd)
@@ -43,7 +43,7 @@ def project(git_project_factory, monkeypatch):
         # in use_hatch_in_src we use the hatch-ci from the current src directory
         # (eg. pip editable installed)
         srcdir = str(Path(hatch_ci.__file__).parent.parent.parent).replace("\\", "/")
-        hatch_src = f"-e file://{srcdir}" if use_hatch_in_src else "hatch-ci"
+        hatch_src = "hatch-ci" if use_hatch_ci_from_current_env else f"-e file://{srcdir}"
         paths.append(repo.workdir / "pyproject.toml")
         paths[-1].write_text(f"""
 [build-system]
@@ -111,7 +111,7 @@ workflow = '(?P<workflow>[^']+)'
 
 def test_master_branch(project):
     """build sdist and wheel from master branch"""
-    repo = project("foobar", "0.0.0", use_hatch_in_src=True)
+    repo = project("foobar", "0.0.0", use_hatch_ci_from_current_env=True)
     assert repo.status() == {}
 
     # 1. check the jinja2 processed files content
@@ -121,7 +121,7 @@ def test_master_branch(project):
     """)
 
     # 2. build the package using this code
-    build(["."], "pytest")
+    build(["-n", "."], "pytest")
 
     # 3. verify we don't have leftovers after build
     assert repo.status() == {
@@ -132,6 +132,7 @@ def test_master_branch(project):
     tarball = repo.workdir / "dist" / f"{repo.name}-{repo.version()}.tar.gz"
     contents = fileos.zextract(tarball)
     assert set(contents) == {
+        "foobar-0.0.0/.gitignore",
         "foobar-0.0.0/PKG-INFO",
         "foobar-0.0.0/pyproject.toml",
         "foobar-0.0.0/src/foobar/__init__.py",
@@ -194,15 +195,14 @@ def test_master_branch(project):
 
 
 def test_beta_branch(project):
-    isolated = False  # hatch-ci from the current python env if False
     tag = "b0"  # we build with an index of 0 (the fallback)
 
-    repo = project("foobar", "0.0.0", use_hatch_in_src=not isolated)
+    repo = project("foobar", "0.0.0", use_hatch_ci_from_current_env=True)
     repo.branch("beta/0.0.0")
     assert repo.branch() == "beta/0.0.0"
 
     assert repo.status() == {}
-    build(["."], "pytest")
+    build(["-n", "."], "pytest")
 
     # 1. verify we don't have leftovers
     assert repo.status() == {
@@ -214,6 +214,7 @@ def test_beta_branch(project):
 
     contents = fileos.zextract(tarball)
     assert set(contents) == {
+        f"foobar-0.0.0{tag}/.gitignore",
         f"foobar-0.0.0{tag}/PKG-INFO",
         f"foobar-0.0.0{tag}/pyproject.toml",
         f"foobar-0.0.0{tag}/src/foobar/__init__.py",

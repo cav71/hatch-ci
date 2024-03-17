@@ -1,3 +1,12 @@
+*** BUILD ***
+
+# install the hatch-ci to use to build the package
+python make.py install
+
+
+*** CODE ***
+
+
 C:\Users\antonio\envs\hatch-ci\Lib\site-packages\pyproject_hooks\_impl.py
 Patch pyproject_hooks._impl.BuildBackendHookCaller._call_hook with:
 
