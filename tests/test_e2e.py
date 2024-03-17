@@ -2,9 +2,9 @@ import re
 from pathlib import Path
 
 import pytest
+from build.__main__ import main as build
 
 import hatch_ci
-from build.__main__ import main as build
 from hatch_ci import fileos, text
 
 
