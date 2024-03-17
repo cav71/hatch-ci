@@ -177,6 +177,9 @@ class GitRepo(GitRepoBase):
             " M": 256,
             "MM": 258,
             "A ": 1,
+            "R ": 4 | 1,
+            "RM": 4 | 1 | 256,
+            "RD": 4 | 1 | 256,
         }
         result: dict[str, int] = {}
         try:
@@ -188,7 +191,7 @@ class GitRepo(GitRepoBase):
                 continue
             tag, filename = line[:2], line[3:]
             if tag not in mapper:
-                raise GitError(f"cannot map git status for '{tag}'")
+                raise GitError(f"cannot map git status for '{tag}' on {filename}")
             value = mapper[tag]
             if value:
                 result[filename] = (

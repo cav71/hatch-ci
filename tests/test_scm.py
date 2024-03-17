@@ -21,6 +21,56 @@ def test_lookup(git_project_factory, monkeypatch):
             == f"{repo.workdir}")
 
 
+def test_basic_scm_operations(git_project_factory):
+    repo = git_project_factory("test_check_version-repo").create("0.0.0")
+    assert not repo.status()
+
+    path = repo.workdir / "new-file.txt"
+    path2 = repo.workdir / "renamed-file.txt"
+
+    # 1. add new untracked file
+    path.write_text("Hello")
+    assert repo.status() == {"new-file.txt": 128}
+
+    # 2. track file
+    repo(["add", path.name])
+    assert repo.status() == {"new-file.txt": 1}
+
+    # 3. commit file
+    repo.commit(path.name, "added new file")
+    assert not repo.status()
+
+    # 4. delete file
+    path.unlink()
+    assert repo.status() == {"new-file.txt": 512}
+
+    # 5. restore file
+    path.write_text("Hello")
+    assert not repo.status()
+
+    # 6. rename file
+    repo(["mv", path.name, path2.name])
+    # path.unlink()
+    # path2.write_text("Hello")
+    assert repo.status() == {"new-file.txt -> renamed-file.txt": 5}
+
+    # 7. modify renamed file
+    path2.write_text("Hello World")
+    assert repo.status() == {"new-file.txt -> renamed-file.txt": 261}
+
+    # 8. restore (the wrong way)
+    path.write_text("Hello")
+    path2.unlink()
+    assert repo.status() == {
+        "new-file.txt -> renamed-file.txt": 261,
+        "new-file.txt": 128,
+    }
+
+    # 9. restore (proper way)
+    repo(["restore", "--staged", path.name, path2.name])
+    assert not repo.status()
+
+
 def test_handle_remote_and_local_repos(git_project_factory):
     "test branch handling across repos"
 
