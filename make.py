@@ -198,13 +198,13 @@ class Repo:
 def project(repo, uninstall=True):
     from toml import loads
 
-    tooldir = repo.workdir / "tools"
+    pyproject = repo.workdir / "tests" / "data" / "pyproject.toml"
 
     if "pyproject.toml" in repo(["status", "--porcelain"]):
         raise RuntimeError("pyproject.toml has modifications in it")
     name = loads((repo.workdir / "pyproject.toml").read_text())["project"]["name"]
     try:
-        shutil.copyfile(tooldir / "pyproject.toml", repo.workdir / "pyproject.toml")
+        shutil.copyfile(pyproject, repo.workdir / "pyproject.toml")
         run(["python", "-m" "pip", "install", "-v", "-e", repo.workdir])
         yield
     finally:
