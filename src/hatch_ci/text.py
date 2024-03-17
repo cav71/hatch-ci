@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 def indent(txt: str, pre: str = " " * 2) -> str:
     """simple text indentation"""
 

@@ -1,5 +1,7 @@
 """various file/dir related functions"""
 
+from __future__ import annotations
+
 import os
 import types
 from pathlib import Path
