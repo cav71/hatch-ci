@@ -2,12 +2,14 @@ build
 click
 coveragepy
 hatch
+jeepney
 jinja2
 lxml
 mock
 mypy
 mypy-extensions
 pre-commit
+pycparser
 pyfakefs
 pytest
 pytest-cov
@@ -16,5 +18,7 @@ pytest-subtests
 pytest-xdist
 ruff
 toml
+tomli
 types-toml
 typing_extensions
+wheel >= 0.43.0
