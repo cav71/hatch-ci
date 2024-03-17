@@ -34,6 +34,8 @@ def splitter(txt):
         if len(kv := line.split("=")) == 2:
             result[kv[0].strip()] = kv[1].strip()
     return result
+
+
 #
 #
 # def T(txt):
@@ -187,7 +189,9 @@ def test_update_version_release(git_project_factory):
         tools.update_version(repo.initfile, GITHUB["release"], abort=False) == "0.3.9"
     )
     assert code.get_module_var(repo.initfile) == "0.3.9"
-    assert code.get_module_var(repo.initfile, "__hash__") == GITHUB["release"]["sha"][:7]
+    assert (
+        code.get_module_var(repo.initfile, "__hash__") == GITHUB["release"]["sha"][:7]
+    )
     repo.revert(repo.initfile)
 
 
@@ -197,15 +201,19 @@ def test_get_environment(git_project_factory):
     assert code.get_module_var(repo.initfile) == "0.3.9"
 
     env = tools.get_environment(repo.initfile, None, None)
-    out = env.from_string("""
+    out = (
+        env.from_string("""
 {% for key, value in sorted(ctx.items()) -%}
 {{key}} = {{value}}
 {% endfor %}
-""").render().strip()
+""")
+        .render()
+        .strip()
+    )
 
     found = splitter(out)
     assert found == {
-        "branch":  "master",
+        "branch": "master",
         "build": "0",
         "current": "0.3.9",
         "ref": "refs/heads/master",
@@ -222,8 +230,9 @@ def test_get_environment(git_project_factory):
 def test_generate_build_record(tmp_path):
     dst = tmp_path / "abc.def"
 
-    tools.generate_build_record(dst,  { "a": 1, "b": 2})
-    assert splitter(dst.read_text()) ==  {"a": "1", "b": "2"}
+    tools.generate_build_record(dst, {"a": 1, "b": 2})
+    assert splitter(dst.read_text()) == {"a": "1", "b": "2"}
+
 
 # def test_process(git_project_factory):
 #

@@ -51,7 +51,7 @@ def test_cli_call_help():
             found = (
                 parser.format_help()
                 .strip()
-                #.replace(" py.test ", " pytest ")
+                # .replace(" py.test ", " pytest ")
                 .replace("optional arguments:", "options:")
             )
             assert (

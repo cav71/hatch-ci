@@ -1,4 +1,5 @@
 """adds a datadir and resolver fixtures"""
+
 from __future__ import annotations
 
 import dataclasses as dc
@@ -33,6 +34,7 @@ def resolver(request, datadir):
         >>> def test_me(resolver):
         >>>     print(resolver.lookup("a/b/c"))
     """
+
     @dc.dataclass
     class Resolver:
         root: Path
@@ -48,6 +50,4 @@ def resolver(request, datadir):
                     return candidate
             raise FileNotFoundError(f"cannot find {path}", candidates)
 
-    yield Resolver(
-        datadir,
-        request.module.__name__)
+    yield Resolver(datadir, request.module.__name__)

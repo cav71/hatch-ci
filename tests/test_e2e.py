@@ -9,23 +9,20 @@ from hatch_ci import fileos, text
 
 
 def T(txt: str) -> str:  # noqa: N802
-    return (
-        text
-        .indent(txt, pre="")
-        .replace("\r", "")
-        .rstrip("\n")
-    )
+    return text.indent(txt, pre="").replace("\r", "").rstrip("\n")
+
 
 @pytest.fixture(scope="function")
 def project(git_project_factory, monkeypatch):
     """creates a project with this structure
-        ├── .git/
-        ├── pyproject.toml
-        └── src/
-            └── <name>>/
-                ├── __init__.py  <- contains <version>
-                └── xyz.py
+    ├── .git/
+    ├── pyproject.toml
+    └── src/
+        └── <name>>/
+            ├── __init__.py  <- contains <version>
+            └── xyz.py
     """
+
     def _make(name, version, cwd=True, use_hatch_in_src=False):
         repo = git_project_factory(name=name).create(version)
         if cwd:
@@ -35,10 +32,12 @@ def project(git_project_factory, monkeypatch):
 
         # xyz module
         paths.append(repo.workdir / "src" / name / "template.jinja2")
-        paths[-1].write_text(T("""
+        paths[-1].write_text(
+            T("""
         # This is a file that will be jinjia2 processed during build
         # This string -> 'replace-me' will be replaced
-        """))
+        """)
+        )
 
         # pyproject
         # in use_hatch_in_src we use the hatch-ci from the current src directory
@@ -78,19 +77,24 @@ process-paths = [
     """)
         repo.commit(paths, "init")
         return repo
+
     return _make
 
 
 def match_version(txt):
-    result = re.search(r"""
+    result = re.search(
+        r"""
 __version__ = "(?P<version>\d+([.]\d+)*)(?P<tag>[a-zA-Z].*)?"
 __hash__ = "(?P<sha>[0-9abcdef]{7})"
-""".strip(), txt.strip().replace("\r", ""))
+""".strip(),
+        txt.strip().replace("\r", ""),
+    )
     return result.groupdict() if result else None
 
 
 def match_build(txt):
-    result = re.search(r"""
+    result = re.search(
+        r"""
 branch = '(?P<branch>[^']+)'
 build = 0
 current = '(?P<current>\d+([.]\d+)*)(?P<ctag>[a-zA-Z].*)?'
@@ -99,7 +103,9 @@ runid = 0
 sha = '(?P<sha>[0-9abcdef]{40})'
 version = '(?P<version>\d+([.]\d+)*)(?P<tag>[a-zA-Z].*)?'
 workflow = '(?P<workflow>[^']+)'
-    """.strip(), txt.strip().replace("\r", ""))
+    """.strip(),
+        txt.strip().replace("\r", ""),
+    )
     return result.groupdict() if result else None
 
 
@@ -118,7 +124,9 @@ def test_master_branch(project):
     build(["."], "pytest")
 
     # 3. verify we don't have leftovers after build
-    assert repo.status() == {"dist/": 128, }
+    assert repo.status() == {
+        "dist/": 128,
+    }
 
     # 4. verify the sdist contains the right files
     tarball = repo.workdir / "dist" / f"{repo.name}-{repo.version()}.tar.gz"
@@ -134,13 +142,19 @@ def test_master_branch(project):
     }
 
     assert match_version(contents["foobar-0.0.0/src/foobar/__init__.py"]) == {
-        "version": "0.0.0", "sha": repo.head.target.hex[:7], "tag": None,
+        "version": "0.0.0",
+        "sha": repo.head.target.hex[:7],
+        "tag": None,
     }
     assert match_build(contents["foobar-0.0.0/src/foobar/_build.py"]) == {
-        "branch": "master", "current": "0.0.0",
-        "sha":    repo.head.target.hex,
-        "version": "0.0.0", "tag": None, "workflow": "master",
-        "ref": "refs/heads/master", "ctag": None,
+        "branch": "master",
+        "current": "0.0.0",
+        "sha": repo.head.target.hex,
+        "version": "0.0.0",
+        "tag": None,
+        "workflow": "master",
+        "ref": "refs/heads/master",
+        "ctag": None,
     }
     assert T(contents["foobar-0.0.0/src/foobar/template.jinja2"]) == T("""
     # This is a file that will be jinjia2 processed during build
@@ -158,24 +172,30 @@ def test_master_branch(project):
         "foobar/__init__.py",
         "foobar/__init__.py.original",
         "foobar/_build.py",
-        "foobar/template.jinja2", "foobar/template.jinja2.original",
-
+        "foobar/template.jinja2",
+        "foobar/template.jinja2.original",
     }
 
     assert match_version(contents["foobar/__init__.py"]) == {
-        "version": "0.0.0", "sha": repo.head.target.hex[:7], "tag": None,
+        "version": "0.0.0",
+        "sha": repo.head.target.hex[:7],
+        "tag": None,
     }
     assert match_build(contents["foobar/_build.py"]) == {
-        "branch": "master", "current": "0.0.0",
-        "sha":    repo.head.target.hex, "version": "0.0.0", "tag": None,
+        "branch": "master",
+        "current": "0.0.0",
+        "sha": repo.head.target.hex,
+        "version": "0.0.0",
+        "tag": None,
         "workflow": "master",
-        "ref": "refs/heads/master", "ctag": None,
+        "ref": "refs/heads/master",
+        "ctag": None,
     }
 
 
 def test_beta_branch(project):
-    isolated = False # hatch-ci from the current python env if False
-    tag = "b0" # we build with an index of 0 (the fallback)
+    isolated = False  # hatch-ci from the current python env if False
+    tag = "b0"  # we build with an index of 0 (the fallback)
 
     repo = project("foobar", "0.0.0", use_hatch_in_src=not isolated)
     repo.branch("beta/0.0.0")
@@ -185,7 +205,9 @@ def test_beta_branch(project):
     build(["."], "pytest")
 
     # 1. verify we don't have leftovers
-    assert repo.status() == {"dist/": 128, }
+    assert repo.status() == {
+        "dist/": 128,
+    }
 
     # 2. verify the sdist contains the right files
     tarball = repo.workdir / "dist" / f"{repo.name}-{repo.version()}{tag}.tar.gz"
@@ -202,19 +224,24 @@ def test_beta_branch(project):
     }
 
     assert match_version(contents[f"foobar-0.0.0{tag}/src/foobar/__init__.py"]) == {
-        "version": "0.0.0", "sha": repo.head.target.hex[:7], "tag": tag,
+        "version": "0.0.0",
+        "sha": repo.head.target.hex[:7],
+        "tag": tag,
     }
     assert match_build(contents[f"foobar-0.0.0{tag}/src/foobar/_build.py"]) == {
-        "branch": "beta/0.0.0", "current": "0.0.0",
-        "sha":    repo.head.target.hex, "version": "0.0.0",
-        "tag": tag, "ref": "refs/heads/beta/0.0.0",
-        "workflow": "beta", "ctag": None,
+        "branch": "beta/0.0.0",
+        "current": "0.0.0",
+        "sha": repo.head.target.hex,
+        "version": "0.0.0",
+        "tag": tag,
+        "ref": "refs/heads/beta/0.0.0",
+        "workflow": "beta",
+        "ctag": None,
     }
 
     # 3. verify the wheel contains the right files
     wheel = (
-            repo.workdir / "dist" /
-            f"{repo.name}-{repo.version()}{tag}-py3-none-any.whl"
+        repo.workdir / "dist" / f"{repo.name}-{repo.version()}{tag}-py3-none-any.whl"
     )
 
     contents = fileos.zextract(wheel)
@@ -225,10 +252,14 @@ def test_beta_branch(project):
         "foobar/__init__.py",
         "foobar/__init__.py.original",
         "foobar/_build.py",
-        "foobar/template.jinja2", "foobar/template.jinja2.original", }
+        "foobar/template.jinja2",
+        "foobar/template.jinja2.original",
+    }
 
     assert match_version(contents["foobar/__init__.py"]) == {
-        "version": "0.0.0", "sha": repo.head.target.hex[:7], "tag": "b0",
+        "version": "0.0.0",
+        "sha": repo.head.target.hex[:7],
+        "tag": "b0",
     }
     assert match_build(contents["foobar/_build.py"]) == {
         "branch": "beta/0.0.0",
@@ -240,8 +271,3 @@ def test_beta_branch(project):
         "workflow": "beta",
         "ctag": tag,
     }
-
-
-
-
-

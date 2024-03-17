@@ -62,8 +62,9 @@ def test_zextract(resolver):
 
     ball = resolver.lookup("foobar-0.0.0.tar.gz")
     data = fileos.zextract(ball)
-    assert (data["foobar-0.0.0/src/foobar/__init__.py"].strip()
-            == '__version__ = "0.0.0"')
+    assert (
+        data["foobar-0.0.0/src/foobar/__init__.py"].strip() == '__version__ = "0.0.0"'
+    )
 
 
 def test_backup_unbackup(tmp_path):

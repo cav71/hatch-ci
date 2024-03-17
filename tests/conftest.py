@@ -41,10 +41,12 @@ def mktree(tmp_path):
         files within the given temporary path.
 
     """
+
     def create(txt, mode=None, subpath=""):
-        mode = mode or ("tree" if "─ " in txt else "txt" )
+        mode = mode or ("tree" if "─ " in txt else "txt")
         if mode == "tree":
             from hatch_ci import tree
+
             tree.write(Path(tmp_path) / subpath, tree.parse(txt))
         else:
             for path in [f for f in txt.split("\n") if f.strip()]:
@@ -57,7 +59,9 @@ def mktree(tmp_path):
                     dst.parent.mkdir(exist_ok=True, parents=True)
                     dst.write_text("")
         return Path(tmp_path) / subpath
+
     return create
+
 
 #####################
 # Main flags/config #

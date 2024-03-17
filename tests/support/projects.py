@@ -80,10 +80,9 @@ def git_project_factory(request, tmp_path):
             ]
             return lines[0] if lines else None
 
-        def create(self, version=None,
-                   clone=None,
-                   subdir=None,
-                   force=False, nobranch=False):
+        def create(
+            self, version=None, clone=None, subdir=None, force=False, nobranch=False
+        ):
             if clone:
                 clone.clone(self.workdir, force=force)
             else:
@@ -96,9 +95,11 @@ def git_project_factory(request, tmp_path):
         from string import ascii_uppercase, digits
 
         return "".join(
-            choice(ascii_uppercase + digits) for _ in range(size)  # noqa: S311
+            choice(ascii_uppercase + digits)  # noqa: S311
+            for _ in range(size)
         )
 
-    return lambda subdir="", name="": Project(name,
-                                              tmp_path / (subdir or id_generator()))
+    return lambda subdir="", name="": Project(
+        name, tmp_path / (subdir or id_generator())
+    )
     # or request.node.name

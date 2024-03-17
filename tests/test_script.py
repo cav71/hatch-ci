@@ -42,7 +42,7 @@ def test_main_make_beta(git_project_factory):
         repo=repo,
         mode="make-beta",
         error=errorfn,
-        master=None
+        master=None,
     )
     try:
         script.main.__wrapped__(options)
@@ -55,7 +55,7 @@ def test_main_make_beta(git_project_factory):
         repo=repo,
         mode="make-beta",
         error=errorfn,
-        master="master"
+        master="master",
     )
     script.main.__wrapped__(options)
     assert set(repo.branches.local) == {"master", "beta/0.0.0"}
@@ -68,7 +68,6 @@ def test_main_make_beta(git_project_factory):
 
 
 def test_main_make_release(git_project_factory):
-
     repo = git_project_factory().create(version="0.0.0")
     old = repo.branch("beta/0.0.0", "master")
     repo(["checkout", old])
@@ -78,7 +77,7 @@ def test_main_make_release(git_project_factory):
         repo=repo,
         mode="micro",
         error=errorfn,
-        master="master"
+        master="master",
     )
     try:
         script.main.__wrapped__(options)
