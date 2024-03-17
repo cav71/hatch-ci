@@ -271,7 +271,7 @@ class GitRepo(GitRepoBase):
 
 
 def lookup(path: Path | str) -> GitRepo | None:
-    cur = Path(path)
+    cur = Path(path).absolute()
     found = False
     while not found and cur != cur.parent:
         if (cur / ".git").exists():
@@ -279,4 +279,5 @@ def lookup(path: Path | str) -> GitRepo | None:
         if str(cur) == cur.root:
             break
         cur = cur.parent
+
     return None

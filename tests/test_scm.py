@@ -5,7 +5,7 @@ import pytest
 from hatch_ci import scm
 
 
-def test_lookup(git_project_factory):
+def test_lookup(git_project_factory, monkeypatch):
     repo = git_project_factory().create("0.0.0")
     dstdir = repo.workdir / "a" / "b" / "c"
     dstdir.mkdir(parents=True)
@@ -14,6 +14,11 @@ def test_lookup(git_project_factory):
 
     assert str(scm.lookup(dstdir).workdir) == f"{repo.workdir}"
     assert scm.lookup(dstdir.parent.parent.parent.parent) is None
+
+    # verify we can lookup with a relative path
+    monkeypatch.chdir(repo.workdir)
+    assert (str(scm.lookup(dstdir.relative_to(repo.workdir)).workdir)
+            == f"{repo.workdir}")
 
 
 def test_handle_remote_and_local_repos(git_project_factory):
