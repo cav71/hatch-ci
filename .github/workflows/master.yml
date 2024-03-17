@@ -6,14 +6,15 @@ on:
       - master
 env:
   PACKAGE: hatch_ci
-  XTARGET: '3.12'
+  XTARGETS: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+  XTARGET: "3.12"
 
 jobs:
   build:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ${{ env.XTARGETS }}
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -93,7 +94,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.8", "3.9", "3.10", "3.11",]
+        python-version: ${{ env.XTARGETS }}
     runs-on: ${{ matrix.os }}
     needs: build
     steps:
