@@ -274,14 +274,14 @@ if __name__ == "__main__":
         )
 
     if len(sys.argv) < 2 or sys.argv[1] not in COMMANDS:
-        txt = [f"  {cmd} - {getdoc(fn)}" for cmd, fn in COMMANDS.items()]
+        txt = "\n".join(f"  {cmd} - {getdoc(fn)}" for cmd, fn in COMMANDS.items())
         print(  # noqa: T201
             f"""\
 make.py <command> {{arguments}}
 
 Commands:
 
-{"\n".join(txt)}
+{txt}
 """,
             file=sys.stderr,
         )
