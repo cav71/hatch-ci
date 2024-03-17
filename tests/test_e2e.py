@@ -1,12 +1,20 @@
-import re  # noqa: I001
+import re
+from pathlib import Path
 
 import pytest
+
 import hatch_ci
-
-from pathlib import Path
 from build.__main__ import main as build
-from hatch_ci import fileos
+from hatch_ci import fileos, text
 
+
+def T(txt: str) -> str:  # noqa: N802
+    return (
+        text
+        .indent(txt, pre="")
+        .replace("\r", "")
+        .rstrip("\n")
+    )
 
 @pytest.fixture(scope="function")
 def project(git_project_factory, monkeypatch):
@@ -27,10 +35,10 @@ def project(git_project_factory, monkeypatch):
 
         # xyz module
         paths.append(repo.workdir / "src" / name / "template.jinja2")
-        paths[-1].write_text("""
-# This is a file that will be jinjia2 processed during build
-# This string -> 'replace-me' will be replaced with the current code version
-        """)
+        paths[-1].write_text(T("""
+        # This is a file that will be jinjia2 processed during build
+        # This string -> 'replace-me' will be replaced
+        """))
 
         # pyproject
         # in use_hatch_in_src we use the hatch-ci from the current src directory
@@ -62,7 +70,7 @@ version-file = "src/{name}/__init__.py"
 [tool.hatch.build.hooks.ci]
 version-file = "src/{name}/__init__.py"
 process-replace = [
-    ["re:(replace-me)", "[\\\\1]"]
+    ["re:(replace-me)", "[\\\\1 -> REPLACED!!]"]
 ]
 process-paths = [
     "src/{name}/template.jinja2"
@@ -101,11 +109,10 @@ def test_master_branch(project):
     assert repo.status() == {}
 
     # 1. check the jinja2 processed files content
-    assert ((repo.workdir / "src" / "foobar" / "template.jinja2").read_text().strip()
-            == """
-# This is a file that will be jinjia2 processed during build
-# This string -> 'replace-me' will be replaced with the current code version
-    """.strip())
+    assert (repo.workdir / "src" / "foobar" / "template.jinja2").read_text() == T("""
+    # This is a file that will be jinjia2 processed during build
+    # This string -> 'replace-me' will be replaced
+    """)
 
     # 2. build the package using this code
     build(["."], "pytest")
@@ -135,6 +142,10 @@ def test_master_branch(project):
         "version": "0.0.0", "tag": None, "workflow": "master",
         "ref": "refs/heads/master", "ctag": None,
     }
+    assert T(contents["foobar-0.0.0/src/foobar/template.jinja2"]) == T("""
+    # This is a file that will be jinjia2 processed during build
+    # This string -> '[replace-me -> REPLACED!!]' will be replaced
+    """)
 
     # 3. verify the wheel contains the right files
     wheel = repo.workdir / "dist" / f"{repo.name}-{repo.version()}-py3-none-any.whl"
