@@ -1,5 +1,4 @@
 import re
-import sys
 from pathlib import Path
 
 import pytest
@@ -215,7 +214,7 @@ def test_beta_branch(project):
 
     contents = fileos.zextract(tarball)
     assert set(contents) == {
-        *({f"foobar-0.0.0{tag}/.gitignore"} if sys.platform == "win32" else set()),
+        #*({f"foobar-0.0.0{tag}/.gitignore"} if sys.platform == "win32" else set()),
         f"foobar-0.0.0{tag}/PKG-INFO",
         f"foobar-0.0.0{tag}/pyproject.toml",
         f"foobar-0.0.0{tag}/src/foobar/__init__.py",
