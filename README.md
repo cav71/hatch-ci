@@ -11,6 +11,7 @@
 [![Mypy](https://img.shields.io/badge/types-Mypy-blue.svg)](https://mypy-lang.org/)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
+> **NOTE** This is a beta branch!
 
 ## Introduction
 This is a [hatch-vcs](https://github.com/ofek/hatch-vcs) heavily inspired plugin: it captures values from
